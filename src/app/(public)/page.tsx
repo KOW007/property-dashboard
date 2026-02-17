@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Link from 'next/link'
+import HeroSlideshow from '@/components/HeroSlideshow'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,31 +14,8 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Hero Section */}
-      <section className="bg-[#2d2d2d] text-white py-24">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h1 className="text-6xl font-bold mb-4 tracking-tight">
-            This Must be the Place
-          </h1>
-          <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-            Providing Austin with beautiful rentals since 2001. Find your next home with Spearhead Properties.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              href="/for-rent"
-              className="bg-[#b22625] hover:bg-[#8a1d1c] text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
-            >
-              View Available Rentals
-            </Link>
-            <Link
-              href="/apply"
-              className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-lg text-lg font-semibold border border-white/30 transition-colors"
-            >
-              Apply Now
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Hero Slideshow */}
+      <HeroSlideshow />
 
       {/* Communities Section */}
       <section className="py-16 bg-gray-50">

@@ -14,7 +14,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {/* Header */}
       <header className="bg-[#2d2d2d] text-white">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center bg-white rounded-lg px-3 py-1.5">
+          <Link href="/" className="flex items-center">
             <Image
               src="/logo.png"
               alt="Spearhead Properties"
@@ -55,7 +55,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <div className="grid grid-cols-3 gap-8">
             {/* Company Info */}
             <div>
-              <div className="bg-white rounded-lg px-3 py-1.5 inline-block mb-4">
+              <div className="inline-block mb-4">
                 <Image
                   src="/logo.png"
                   alt="Spearhead Properties"
