@@ -1,0 +1,26 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  const hasAuthCookie = request.cookies.getAll().some(cookie => 
+    cookie.name.startsWith('sb-') && cookie.name.includes('auth-token')
+  )
+
+  const isLoginPage = request.nextUrl.pathname === '/login'
+
+  // If logged in and on login page, redirect to dashboard
+  if (hasAuthCookie && isLoginPage) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // If not logged in and NOT on login page, redirect to login
+  if (!hasAuthCookie && !isLoginPage) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.svg).*)'],
+}
