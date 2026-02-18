@@ -128,10 +128,15 @@ export default function TenantApplicationForm() {
     setSubmitting(true)
 
     try {
+      // Convert all empty strings to null so Postgres doesn't reject them
+      const cleanedData = Object.fromEntries(
+        Object.entries(formData).map(([k, v]) => [k, v === '' ? null : v])
+      ) as typeof formData
+
       // Insert main application
       const { data: application, error: appError } = await supabase
         .from('tenant_applications')
-        .insert([formData])
+        .insert([cleanedData])
         .select()
         .single()
 
@@ -158,9 +163,9 @@ export default function TenantApplicationForm() {
       }
 
       setSubmitted(true)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting application:', error)
-      alert('Error submitting application. Please try again.')
+      alert(`Error submitting application: ${error?.message || JSON.stringify(error)}`)
     } finally {
       setSubmitting(false)
     }
