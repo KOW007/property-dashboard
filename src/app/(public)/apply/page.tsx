@@ -155,7 +155,7 @@ export default function TenantApplicationForm() {
           <p className="text-gray-600 mb-6">
             Thank you for applying. We'll review your application and get back to you soon.
           </p>
-          <Link href="/" className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+          <Link href="/" className="inline-block bg-[#2d2d2d] text-white px-6 py-2 rounded-lg hover:bg-black">
             Back to Home
           </Link>
         </div>
@@ -167,7 +167,7 @@ export default function TenantApplicationForm() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <Link href="/" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
+          <Link href="/" className="text-[#b22625] hover:text-[#8a1d1c] text-sm mb-2 inline-block">
             ← Back
           </Link>
           <h1 className="text-4xl font-bold text-gray-900">Rental Application</h1>
@@ -765,7 +765,7 @@ export default function TenantApplicationForm() {
             <button
               type="submit"
               disabled={submitting}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-lg font-semibold"
+              className="bg-[#2d2d2d] text-white px-8 py-3 rounded-lg hover:bg-black disabled:bg-gray-400 text-lg font-semibold"
             >
               {submitting ? 'Submitting...' : 'Submit Application'}
             </button>
