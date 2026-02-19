@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function TenantApplicationForm() {
@@ -128,39 +127,15 @@ export default function TenantApplicationForm() {
     setSubmitting(true)
 
     try {
-      // Convert all empty strings to null so Postgres doesn't reject them
-      const cleanedData = Object.fromEntries(
-        Object.entries(formData).map(([k, v]) => [k, v === '' ? null : v])
-      ) as typeof formData
+      const response = await fetch('/api/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, references, previousAddresses }),
+      })
 
-      // Insert main application
-      const { data: application, error: appError } = await supabase
-        .from('tenant_applications')
-        .insert([cleanedData])
-        .select()
-        .single()
+      const result = await response.json()
 
-      if (appError) throw appError
-
-      // Insert references
-      if (application) {
-        const refsToInsert = references
-          .filter(ref => ref.reference_name && ref.phone)
-          .map(ref => ({ ...ref, application_id: application.id }))
-        
-        if (refsToInsert.length > 0) {
-          await supabase.from('application_references').insert(refsToInsert)
-        }
-
-        // Insert previous addresses
-        const addrsToInsert = previousAddresses
-          .filter(addr => addr.street_address)
-          .map(addr => ({ ...addr, application_id: application.id }))
-        
-        if (addrsToInsert.length > 0) {
-          await supabase.from('application_previous_addresses').insert(addrsToInsert)
-        }
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to submit application')
 
       setSubmitted(true)
     } catch (error: any) {
