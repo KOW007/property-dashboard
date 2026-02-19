@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <aside className="w-64 bg-[#2d2d2d] text-white flex flex-col min-h-screen fixed">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-white/10">
-          <Link href="/dashboard" className="block bg-white rounded-lg px-3 py-1.5">
+          <Link href="/dashboard" className="block px-3 py-1.5">
             <Image
               src="/logo.png"
               alt="Spearhead Properties"
