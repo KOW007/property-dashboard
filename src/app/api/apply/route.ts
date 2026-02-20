@@ -11,20 +11,13 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { references, previousAddresses, ...formData } = body
 
-    // Numeric fields that must be a number or null
-    const numericFields = [
-      'current_monthly_rent', 'monthly_income', 'additional_income_amount',
-      'number_of_dependents', 'vehicle_1_year', 'vehicle_2_year',
-      'application_fee_amount', 'credit_score'
-    ]
-
-    // Clean empty strings to null, convert numeric fields properly
+    // Clean empty strings to null, convert numeric strings to numbers
     const cleanedData = Object.fromEntries(
       Object.entries(formData).map(([k, v]) => {
-        if (v === '' || v === undefined) return [k, null]
-        if (numericFields.includes(k)) {
-          const num = Number(v)
-          return [k, isNaN(num) ? null : num]
+        if (v === '' || v === null || v === undefined) return [k, null]
+        // If it's a string that looks like a number, convert it
+        if (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v))) {
+          return [k, Number(v)]
         }
         return [k, v]
       })
