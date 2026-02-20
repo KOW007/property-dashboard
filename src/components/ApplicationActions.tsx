@@ -4,12 +4,19 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-export default function ApplicationActions({ appId, currentStatus }: { appId: string, currentStatus: string }) {
+export default function ApplicationActions({ appId, currentStatus, email, backgroundCheckStatus }: {
+  appId: string
+  currentStatus: string
+  email?: string
+  backgroundCheckStatus?: string
+}) {
   const [status, setStatus] = useState(currentStatus)
   const [notes, setNotes] = useState('')
   const [showNotes, setShowNotes] = useState(false)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
+
+  const screeningUrl = `https://apply.rentspree.com/?email=${encodeURIComponent(email || '')}`
 
   const updateStatus = async (newStatus: string) => {
     setSaving(true)
@@ -34,6 +41,26 @@ export default function ApplicationActions({ appId, currentStatus }: { appId: st
 
   return (
     <div className="mt-4 space-y-3">
+      {/* Screening */}
+      <div className="flex items-center justify-between">
+        <a
+          href={screeningUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 bg-[#2d2d2d] text-white px-3 py-2 rounded hover:bg-black text-sm font-medium"
+        >
+          🔍 Send Screening Link
+        </a>
+        {backgroundCheckStatus && (
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+            backgroundCheckStatus === 'clear' ? 'bg-green-100 text-green-700' :
+            backgroundCheckStatus === 'flagged' ? 'bg-red-100 text-red-700' :
+            'bg-gray-100 text-gray-600'
+          }`}>
+            Background: {backgroundCheckStatus}
+          </span>
+        )}
+      </div>
       {showNotes && (
         <textarea
           value={notes}

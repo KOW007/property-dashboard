@@ -69,6 +69,7 @@ export default async function ApplicationsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Income</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flags</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Screening</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
@@ -98,6 +99,25 @@ export default async function ApplicationsPage() {
                       {app.is_smoker && <div className="text-gray-500 text-xs">🚬 Smoker</div>}
                       {!app.ever_evicted && !app.ever_convicted && !app.has_pets && !app.is_smoker && (
                         <span className="text-gray-400 text-xs">None</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <a
+                        href={`https://apply.rentspree.com/?email=${encodeURIComponent(app.email || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs bg-[#2d2d2d] text-white px-2 py-1 rounded hover:bg-black"
+                      >
+                        🔍 Screen
+                      </a>
+                      {app.background_check_status && (
+                        <div className={`text-xs mt-1 font-medium ${
+                          app.background_check_status === 'clear' ? 'text-green-600' :
+                          app.background_check_status === 'flagged' ? 'text-red-600' :
+                          'text-gray-500'
+                        }`}>
+                          {app.background_check_status}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -183,7 +203,7 @@ export default async function ApplicationsPage() {
                     </div>
                   )}
 
-                  <ApplicationActions appId={app.id} currentStatus={app.status} />
+                  <ApplicationActions appId={app.id} currentStatus={app.status} email={app.email} backgroundCheckStatus={app.background_check_status} />
                 </div>
               ))}
             </div>
