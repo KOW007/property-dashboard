@@ -11,9 +11,19 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { references, previousAddresses, ...formData } = body
 
-    // Clean empty strings to null
+    // Numeric fields that must be a number or null
+    const numericFields = ['current_monthly_rent', 'monthly_income', 'additional_income_amount', 'number_of_dependents']
+
+    // Clean empty strings to null, convert numeric fields properly
     const cleanedData = Object.fromEntries(
-      Object.entries(formData).map(([k, v]) => [k, v === '' ? null : v])
+      Object.entries(formData).map(([k, v]) => {
+        if (v === '' || v === undefined) return [k, null]
+        if (numericFields.includes(k)) {
+          const num = Number(v)
+          return [k, isNaN(num) ? null : num]
+        }
+        return [k, v]
+      })
     )
 
     // Insert main application
