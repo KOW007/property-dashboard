@@ -12,7 +12,11 @@ export async function POST(request: Request) {
     const { references, previousAddresses, ...formData } = body
 
     // Numeric fields that must be a number or null
-    const numericFields = ['current_monthly_rent', 'monthly_income', 'additional_income_amount', 'number_of_dependents']
+    const numericFields = [
+      'current_monthly_rent', 'monthly_income', 'additional_income_amount',
+      'number_of_dependents', 'vehicle_1_year', 'vehicle_2_year',
+      'application_fee_amount', 'credit_score'
+    ]
 
     // Clean empty strings to null, convert numeric fields properly
     const cleanedData = Object.fromEntries(
