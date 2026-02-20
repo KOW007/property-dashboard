@@ -23,6 +23,13 @@ export async function POST(request: Request) {
       })
     )
 
+    // Log cleaned data to find any remaining empty strings
+    const problematic = Object.entries(cleanedData).filter(([k, v]) => v === '')
+    if (problematic.length > 0) {
+      console.error('Fields still empty strings after cleaning:', problematic.map(([k]) => k))
+    }
+    console.log('Cleaned data:', JSON.stringify(cleanedData))
+
     // Insert main application
     const { data: application, error: appError } = await supabase
       .from('tenant_applications')
@@ -36,7 +43,16 @@ export async function POST(request: Request) {
     if (application && references?.length > 0) {
       const refsToInsert = references
         .filter((ref: any) => ref.reference_name && ref.phone)
-        .map((ref: any) => ({ ...ref, application_id: application.id }))
+        .map((ref: any) => {
+          const cleaned = Object.fromEntries(
+            Object.entries(ref).map(([k, v]) => {
+              if (v === '' || v === null || v === undefined) return [k, null]
+              if (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v))) return [k, Number(v)]
+              return [k, v]
+            })
+          )
+          return { ...cleaned, application_id: application.id }
+        })
 
       if (refsToInsert.length > 0) {
         const { error: refError } = await supabase
@@ -50,7 +66,16 @@ export async function POST(request: Request) {
     if (application && previousAddresses?.length > 0) {
       const addrsToInsert = previousAddresses
         .filter((addr: any) => addr.street_address)
-        .map((addr: any) => ({ ...addr, application_id: application.id }))
+        .map((addr: any) => {
+          const cleaned = Object.fromEntries(
+            Object.entries(addr).map(([k, v]) => {
+              if (v === '' || v === null || v === undefined) return [k, null]
+              if (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v))) return [k, Number(v)]
+              return [k, v]
+            })
+          )
+          return { ...cleaned, application_id: application.id }
+        })
 
       if (addrsToInsert.length > 0) {
         const { error: addrError } = await supabase
