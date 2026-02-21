@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Link from 'next/link'
+import InviteTenantButton from '@/components/InviteTenantButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,6 +100,7 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Move-in</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lease From</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lease To</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Portal</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -119,7 +121,7 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                   <Fragment key={propertyName}>
                     {/* Property Group Header */}
                     <tr className="bg-gray-50">
-                      <td colSpan={13} className="px-3 py-2">
+                      <td colSpan={14} className="px-3 py-2">
                         <span className="text-sm font-semibold text-[#8a1d1c]">
                           {propertyName}{fullAddress ? ` - ${fullAddress}` : ''}
                         </span>
@@ -152,6 +154,9 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                         <td className="px-3 py-2 text-gray-500">{row.move_in_date ? new Date(row.move_in_date).toLocaleDateString() : '—'}</td>
                         <td className="px-3 py-2 text-gray-500">{row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'}</td>
                         <td className="px-3 py-2 text-gray-500">{row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}</td>
+                        <td className="px-3 py-2">
+                          <InviteTenantButton email={row.tenant_email} tenantName={row.tenant_name} />
+                        </td>
                       </tr>
                     ))}
 
@@ -166,7 +171,7 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                       <td className="px-3 py-2 text-right text-gray-700">{propTotals.rent.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{propTotals.charges.toFixed(2)}</td>
                       <td className="px-3 py-2 text-right text-gray-700">{propTotals.deposit.toFixed(2)}</td>
-                      <td colSpan={3}></td>
+                      <td colSpan={4}></td>
                     </tr>
                   </Fragment>
                 )
