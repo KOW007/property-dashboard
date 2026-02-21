@@ -14,8 +14,15 @@ const adminRoutes = [
   '/accounting',
 ]
 
+// Tenant portal routes that require authentication
+const portalRoutes = ['/portal']
+
 function isAdminRoute(pathname: string) {
   return adminRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+}
+
+function isPortalRoute(pathname: string) {
+  return portalRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
 }
 
 export async function middleware(request: NextRequest) {
@@ -46,15 +53,26 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   const isLogin = pathname === '/login'
+  const isPortalLogin = pathname === '/portal-login'
 
-  // Logged-in user on login page → redirect to dashboard
+  // Logged-in user on admin login page → redirect to dashboard
   if (user && isLogin) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Logged-in user on portal login page → redirect to portal
+  if (user && isPortalLogin) {
+    return NextResponse.redirect(new URL('/portal', request.url))
   }
 
   // Not logged in, trying to access admin route → redirect to login
   if (!user && isAdminRoute(pathname)) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Not logged in, trying to access portal → redirect to portal login
+  if (!user && isPortalRoute(pathname)) {
+    return NextResponse.redirect(new URL('/portal-login', request.url))
   }
 
   return supabaseResponse
