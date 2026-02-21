@@ -67,9 +67,11 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       <div className="bg-gray-50 rounded p-3 text-sm">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Assignment</span>
-          <button onClick={() => setEditingUnit(!editingUnit)} className="text-xs text-[#b22625] hover:underline">
-            {editingUnit ? 'Cancel' : 'Edit'}
-          </button>
+          {editingUnit && (
+            <button onClick={() => setEditingUnit(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
+          )}
         </div>
         {editingUnit ? (
           <div className="space-y-2 mt-2">
@@ -96,13 +98,17 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
             </button>
           </div>
         ) : (
-          <div className="text-gray-700">
+          <button
+            onClick={() => setEditingUnit(true)}
+            className="text-left w-full text-gray-700 hover:text-[#b22625] transition-colors"
+            title="Click to edit"
+          >
             {propertyValue ? (
-              <span>{propertyValue} — Unit {unitValue || '—'}</span>
+              <span>{propertyValue} — Unit {unitValue || 'N/A'}</span>
             ) : (
-              <span className="text-gray-400 italic">No unit assigned</span>
+              <span className="text-gray-400 italic hover:text-[#b22625]">N/A — click to assign</span>
             )}
-          </div>
+          </button>
         )}
       </div>
 
