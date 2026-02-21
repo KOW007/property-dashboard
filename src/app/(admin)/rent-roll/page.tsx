@@ -155,7 +155,18 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                         <td className="px-3 py-2 text-gray-500">{row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'}</td>
                         <td className="px-3 py-2 text-gray-500">{row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}</td>
                         <td className="px-3 py-2">
-                          <InviteTenantButton email={row.tenant_email} tenantName={row.tenant_name} />
+                          <div className="flex items-center gap-1.5">
+                            <InviteTenantButton email={row.tenant_email} tenantName={row.tenant_name} />
+                            {row.tenant_email && (
+                              <Link
+                                href={`/portal-preview?email=${encodeURIComponent(row.tenant_email)}`}
+                                className="text-xs px-2 py-0.5 rounded font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                title={`Preview ${row.tenant_name}'s portal`}
+                              >
+                                👁
+                              </Link>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

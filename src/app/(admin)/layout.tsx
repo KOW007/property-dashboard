@@ -13,6 +13,7 @@ const navItems = [
   { label: 'Applications', href: '/applications' },
   { label: 'Service Requests', href: '/service-request' },
   { label: 'Accounting', href: '/accounting/receivables' },
+  { label: 'Tenant Portals', href: '/portal-preview' },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
