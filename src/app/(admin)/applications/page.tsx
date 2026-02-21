@@ -65,6 +65,7 @@ export default async function ApplicationsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applicant</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Desired Unit</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employment</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Income</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied</th>
@@ -81,6 +82,16 @@ export default async function ApplicationsPage() {
                       <div className="text-sm font-medium text-gray-900">{app.first_name} {app.last_name}</div>
                       <div className="text-xs text-gray-500">{app.email}</div>
                       <div className="text-xs text-gray-500">{app.phone}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {app.desired_property ? (
+                        <>
+                          <div className="font-medium text-gray-800">{app.desired_property}</div>
+                          <div className="text-xs text-gray-500">Unit {app.desired_unit}</div>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div>{app.employer_name || 'N/A'}</div>
@@ -161,6 +172,12 @@ export default async function ApplicationsPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    {app.desired_property && (
+                      <div className="col-span-2 bg-blue-50 rounded px-3 py-2">
+                        <span className="text-gray-500">Desired Unit:</span>{' '}
+                        <span className="font-medium text-blue-800">{app.desired_property} — Unit {app.desired_unit}</span>
+                      </div>
+                    )}
                     <div>
                       <span className="text-gray-500">Applied:</span>{' '}
                       <span className="font-medium">{new Date(app.created_at).toLocaleDateString()}</span>
@@ -203,7 +220,7 @@ export default async function ApplicationsPage() {
                     </div>
                   )}
 
-                  <ApplicationActions appId={app.id} currentStatus={app.status} email={app.email} backgroundCheckStatus={app.background_check_status} />
+                  <ApplicationActions appId={app.id} currentStatus={app.status} email={app.email} backgroundCheckStatus={app.background_check_status} desiredProperty={app.desired_property} desiredUnit={app.desired_unit} />
                 </div>
               ))}
             </div>

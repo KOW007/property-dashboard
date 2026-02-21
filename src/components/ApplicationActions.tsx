@@ -4,16 +4,22 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-export default function ApplicationActions({ appId, currentStatus, email, backgroundCheckStatus }: {
+export default function ApplicationActions({ appId, currentStatus, email, backgroundCheckStatus, desiredProperty, desiredUnit }: {
   appId: string
   currentStatus: string
   email?: string
   backgroundCheckStatus?: string
+  desiredProperty?: string
+  desiredUnit?: string
 }) {
   const [status, setStatus] = useState(currentStatus)
   const [notes, setNotes] = useState('')
   const [showNotes, setShowNotes] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingUnit, setEditingUnit] = useState(false)
+  const [unitValue, setUnitValue] = useState(desiredUnit || '')
+  const [propertyValue, setPropertyValue] = useState(desiredProperty || '')
+  const [savingUnit, setSavingUnit] = useState(false)
   const router = useRouter()
 
   const screeningUrl = `https://apply.rentspree.com/?email=${encodeURIComponent(email || '')}`
@@ -39,8 +45,67 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
     setSaving(false)
   }
 
+  const saveUnit = async () => {
+    setSavingUnit(true)
+    const { error } = await supabase
+      .from('tenant_applications')
+      .update({ desired_property: propertyValue || null, desired_unit: unitValue || null })
+      .eq('id', appId)
+    if (!error) {
+      setEditingUnit(false)
+      router.refresh()
+    } else {
+      alert('Error saving unit assignment.')
+    }
+    setSavingUnit(false)
+  }
+
   return (
     <div className="mt-4 space-y-3">
+
+      {/* Unit Assignment */}
+      <div className="bg-gray-50 rounded p-3 text-sm">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Assignment</span>
+          <button onClick={() => setEditingUnit(!editingUnit)} className="text-xs text-[#b22625] hover:underline">
+            {editingUnit ? 'Cancel' : 'Edit'}
+          </button>
+        </div>
+        {editingUnit ? (
+          <div className="space-y-2 mt-2">
+            <input
+              type="text"
+              value={propertyValue}
+              onChange={e => setPropertyValue(e.target.value)}
+              placeholder="Property name"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+            />
+            <input
+              type="text"
+              value={unitValue}
+              onChange={e => setUnitValue(e.target.value)}
+              placeholder="Unit number"
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+            />
+            <button
+              onClick={saveUnit}
+              disabled={savingUnit}
+              className="w-full bg-[#2d2d2d] text-white py-1.5 rounded text-xs font-medium hover:bg-black disabled:opacity-50"
+            >
+              {savingUnit ? 'Saving...' : 'Save Unit'}
+            </button>
+          </div>
+        ) : (
+          <div className="text-gray-700">
+            {propertyValue ? (
+              <span>{propertyValue} — Unit {unitValue || '—'}</span>
+            ) : (
+              <span className="text-gray-400 italic">No unit assigned</span>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Screening */}
       <div className="flex items-center justify-between">
         <a

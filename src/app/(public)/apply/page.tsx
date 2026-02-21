@@ -1,9 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export default function TenantApplicationForm() {
+  const [vacancies, setVacancies] = useState<any[]>([])
+  const [selectedProperty, setSelectedProperty] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
+
+  useEffect(() => {
+    fetch('/api/vacancies')
+      .then(r => r.json())
+      .then(data => setVacancies(data || []))
+  }, [])
+
+  const properties = [...new Set(vacancies.map((v: any) => v.property_name))]
+  const availableUnits = vacancies.filter((v: any) => v.property_name === selectedProperty)
+
   const [formData, setFormData] = useState({
     // Personal Info
     first_name: '',
@@ -130,7 +143,13 @@ export default function TenantApplicationForm() {
       const response = await fetch('/api/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, references, previousAddresses }),
+        body: JSON.stringify({
+          ...formData,
+          desired_property: selectedProperty,
+          desired_unit: selectedUnit,
+          references,
+          previousAddresses
+        }),
       })
 
       const result = await response.json()
@@ -175,6 +194,49 @@ export default function TenantApplicationForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+
+          {/* Property & Unit Selection */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Property & Unit</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
+                <select
+                  required
+                  value={selectedProperty}
+                  onChange={(e) => { setSelectedProperty(e.target.value); setSelectedUnit('') }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Select a property...</option>
+                  {properties.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Unit *</label>
+                <select
+                  required
+                  value={selectedUnit}
+                  onChange={(e) => setSelectedUnit(e.target.value)}
+                  disabled={!selectedProperty}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+                >
+                  <option value="">Select a unit...</option>
+                  <option value="Not sure yet">Not sure yet</option>
+                  {availableUnits.map((u: any) => (
+                    <option key={u.unit_number} value={u.unit_number}>
+                      Unit {u.unit_number} — {u.bedrooms}BD/{u.bathrooms}BA · ${Number(u.market_rent).toLocaleString()}/mo
+                    </option>
+                  ))}
+                </select>
+                {selectedProperty && availableUnits.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">No available units at this property.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Personal Information */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Personal Information</h2>
