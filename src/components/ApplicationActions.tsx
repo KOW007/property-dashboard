@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -20,7 +20,19 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
   const [unitValue, setUnitValue] = useState(desiredUnit || '')
   const [propertyValue, setPropertyValue] = useState(desiredProperty || '')
   const [savingUnit, setSavingUnit] = useState(false)
+  const [vacancies, setVacancies] = useState<any[]>([])
   const router = useRouter()
+
+  useEffect(() => {
+    if (editingUnit && vacancies.length === 0) {
+      fetch('/api/vacancies')
+        .then(r => r.json())
+        .then(data => setVacancies(data || []))
+    }
+  }, [editingUnit])
+
+  const properties = [...new Set(vacancies.map((v: any) => v.property_name))]
+  const availableUnits = vacancies.filter((v: any) => v.property_name === propertyValue)
 
   const screeningUrl = `https://apply.rentspree.com/?email=${encodeURIComponent(email || '')}`
 
@@ -75,20 +87,30 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         </div>
         {editingUnit ? (
           <div className="space-y-2 mt-2">
-            <input
-              type="text"
+            <select
               value={propertyValue}
-              onChange={e => setPropertyValue(e.target.value)}
-              placeholder="Property name"
+              onChange={e => { setPropertyValue(e.target.value); setUnitValue('') }}
               className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-            />
-            <input
-              type="text"
+            >
+              <option value="">Select a property...</option>
+              {properties.map((p: string) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <select
               value={unitValue}
               onChange={e => setUnitValue(e.target.value)}
-              placeholder="Unit number"
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-            />
+              disabled={!propertyValue}
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm disabled:bg-gray-100"
+            >
+              <option value="">Select a unit...</option>
+              <option value="Not sure yet">Not sure yet</option>
+              {availableUnits.map((u: any) => (
+                <option key={u.unit_number} value={u.unit_number}>
+                  Unit {u.unit_number} — {u.bedrooms}BD/{u.bathrooms}BA · ${Number(u.market_rent).toLocaleString()}/mo
+                </option>
+              ))}
+            </select>
             <button
               onClick={saveUnit}
               disabled={savingUnit}
