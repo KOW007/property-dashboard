@@ -25,7 +25,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
 
   useEffect(() => {
     if (editingUnit && vacancies.length === 0) {
-      fetch('/api/vacancies')
+      fetch('/api/all-units')
         .then(r => r.json())
         .then(data => setVacancies(data || []))
     }
@@ -107,7 +107,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
               <option value="Not sure yet">Not sure yet</option>
               {availableUnits.map((u: any) => (
                 <option key={u.unit_number} value={u.unit_number}>
-                  Unit {u.unit_number} — {u.bedrooms}BD/{u.bathrooms}BA · ${Number(u.market_rent).toLocaleString()}/mo
+                  Unit {u.unit_number}
                 </option>
               ))}
             </select>

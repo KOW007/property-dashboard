@@ -9,7 +9,7 @@ export default function TenantApplicationForm() {
   const [selectedUnit, setSelectedUnit] = useState('')
 
   useEffect(() => {
-    fetch('/api/vacancies')
+    fetch('/api/all-units')
       .then(r => r.json())
       .then(data => setVacancies(data || []))
   }, [])
@@ -226,13 +226,10 @@ export default function TenantApplicationForm() {
                   <option value="Not sure yet">Not sure yet</option>
                   {availableUnits.map((u: any) => (
                     <option key={u.unit_number} value={u.unit_number}>
-                      Unit {u.unit_number} — {u.bedrooms}BD/{u.bathrooms}BA · ${Number(u.market_rent).toLocaleString()}/mo
+                      Unit {u.unit_number}
                     </option>
                   ))}
                 </select>
-                {selectedProperty && availableUnits.length === 0 && (
-                  <p className="text-xs text-red-600 mt-1">No available units at this property.</p>
-                )}
               </div>
             </div>
           </div>
