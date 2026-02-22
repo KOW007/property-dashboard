@@ -15,6 +15,7 @@ interface Lease {
   start_date: string
   end_date: string
   monthly_rent: number | string
+  document_url?: string | null
 }
 
 interface Document {
@@ -57,28 +58,40 @@ export default function PortalPropertyContent({ property, unit, leases, document
           <div className="bg-white rounded-xl shadow-sm border-t-4 border-[#b22625] p-6">
             <h2 className="text-lg font-semibold text-gray-700 mb-4">Leases</h2>
             {leases && leases.length > 0 ? (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="text-left px-3 py-2 text-gray-500 font-medium">Lease Dates</th>
-                    <th className="text-right px-3 py-2 text-gray-500 font-medium">Monthly Rent</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {leases.map((lease, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-3 text-gray-700">
-                        {new Date(lease.start_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
-                        {' – '}
-                        {new Date(lease.end_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
-                      </td>
-                      <td className="px-3 py-3 text-right text-gray-700 font-medium">
-                        ${Number(lease.monthly_rent).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="space-y-3">
+                {leases.map((lease, i) => {
+                  const dateRange = `${new Date(lease.start_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} – ${new Date(lease.end_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}`
+                  return (
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="text-sm text-gray-700 font-medium">{dateRange}</p>
+                        <p className="text-xs text-gray-500">${Number(lease.monthly_rent).toLocaleString()}/mo</p>
+                      </div>
+                      {lease.document_url ? (
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={lease.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-[#b22625] hover:underline font-medium"
+                          >
+                            👁 View
+                          </a>
+                          <a
+                            href={lease.document_url}
+                            download
+                            className="text-xs text-[#b22625] hover:underline font-medium"
+                          >
+                            ⬇ Download
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300 italic">No PDF</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             ) : (
               <p className="text-sm text-gray-400">No lease records found.</p>
             )}

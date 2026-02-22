@@ -23,7 +23,7 @@ export default async function PortalPropertyPage() {
 
   const { data: leases } = tenant ? await supabase
     .from('leases')
-    .select('start_date, end_date, monthly_rent')
+    .select('start_date, end_date, monthly_rent, document_url')
     .eq('unit_id', tenant.unit_id)
     .order('end_date', { ascending: false })
     .limit(5) : { data: null }
