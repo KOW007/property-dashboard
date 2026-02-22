@@ -172,6 +172,7 @@ export default async function PortalPreviewPage({
             unit={unit}
             leases={leases}
             documents={documents}
+            isAdmin
           />
         )}
         {activeTab === 'Account Profile' && (

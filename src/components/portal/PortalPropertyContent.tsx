@@ -1,3 +1,6 @@
+import LeaseDocumentLinks from './LeaseDocumentLinks'
+import LeaseDocumentLinksAdmin from './LeaseDocumentLinksAdmin'
+
 interface PropertyInfo {
   name?: string
   address?: string
@@ -30,9 +33,10 @@ interface Props {
   unit: UnitInfo | null
   leases: Lease[] | null
   documents: Document[] | null
+  isAdmin?: boolean
 }
 
-export default function PortalPropertyContent({ property, unit, leases, documents }: Props) {
+export default function PortalPropertyContent({ property, unit, leases, documents, isAdmin }: Props) {
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Property Details</h1>
@@ -68,23 +72,9 @@ export default function PortalPropertyContent({ property, unit, leases, document
                         <p className="text-xs text-gray-500">${Number(lease.monthly_rent).toLocaleString()}/mo</p>
                       </div>
                       {lease.document_url ? (
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={lease.document_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#b22625] hover:underline font-medium"
-                          >
-                            👁 View
-                          </a>
-                          <a
-                            href={lease.document_url}
-                            download
-                            className="text-xs text-[#b22625] hover:underline font-medium"
-                          >
-                            ⬇ Download
-                          </a>
-                        </div>
+                        isAdmin
+                          ? <LeaseDocumentLinksAdmin filePath={lease.document_url} />
+                          : <LeaseDocumentLinks filePath={lease.document_url} />
                       ) : (
                         <span className="text-xs text-gray-300 italic">No PDF</span>
                       )}
