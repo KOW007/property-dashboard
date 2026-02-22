@@ -33,7 +33,7 @@ export default function PortalMaintenanceContent({ openRequests, closedRequests,
               <div className="mb-4 border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Submit a Request (tenant view)</p>
                 <div className="space-y-2 opacity-50 pointer-events-none">
-                  <input disabled placeholder="Title / Issue" className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white" />
+                  <input disabled placeholder="Issue" className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white" />
                   <textarea disabled placeholder="Describe the issue..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-white" />
                   <div className="flex gap-2">
                     <select disabled className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm bg-white text-gray-400">
