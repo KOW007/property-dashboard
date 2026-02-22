@@ -15,10 +15,10 @@ export default function PortalContactContent({ isPreview }: Props) {
           <h2 className="text-lg font-semibold text-gray-800 mb-5">Spearhead Properties</h2>
           <div className="space-y-3">
             <a
-              href="sms:+18634003306"
+              href="mailto:info@spearheadproperties.com"
               className="flex items-center justify-center w-full border border-gray-300 text-gray-700 py-2.5 rounded-lg hover:bg-gray-50 font-medium text-sm transition-colors"
             >
-              📱 Text Us +1(863) 400-3306
+              ✉️ Email Us info@spearheadproperties.com
             </a>
             <a
               href="tel:5122361512"
@@ -39,7 +39,7 @@ export default function PortalContactContent({ isPreview }: Props) {
                   🔧 Request Maintenance
                 </div>
                 <div className="flex items-center justify-center w-full border border-gray-200 text-gray-400 py-2.5 rounded-lg font-medium text-sm">
-                  📋 Request Notice to Vacate
+                  📋 Request to Move Out
                 </div>
               </>
             ) : (
@@ -54,7 +54,7 @@ export default function PortalContactContent({ isPreview }: Props) {
                   href="/portal/contact/notice-to-vacate"
                   className="flex items-center justify-center w-full border border-gray-300 text-gray-700 py-2.5 rounded-lg hover:bg-gray-50 font-medium text-sm transition-colors"
                 >
-                  📋 Request Notice to Vacate
+                  📋 Request to Move Out
                 </Link>
               </>
             )}
