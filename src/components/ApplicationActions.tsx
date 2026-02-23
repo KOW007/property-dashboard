@@ -99,7 +99,6 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         emergency_contact_relationship: app.emergency_contact_relationship || null,
         pets: app.pet_details || null,
         license_plates: app.vehicle_1_license_plate || null,
-        unit_id: unitId,
         status: 'Future',
         is_primary_tenant: true,
       }
@@ -111,6 +110,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         .eq('email', app.email)
         .single()
 
+      let tenantId: string
       if (existing) {
         // Update existing tenant
         const { error: updateError } = await supabase
@@ -118,12 +118,34 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
           .update(tenantData)
           .eq('id', existing.id)
         if (updateError) throw updateError
+        tenantId = existing.id
       } else {
         // Insert new tenant
-        const { error: insertError } = await supabase
+        const { data: newTenant, error: insertError } = await supabase
           .from('tenants')
           .insert(tenantData)
+          .select('id')
+          .single()
         if (insertError) throw insertError
+        tenantId = newTenant.id
+      }
+
+      // Link tenant to unit via unit_tenants junction table
+      if (unitId) {
+        // Check if link already exists
+        const { data: existingLink } = await supabase
+          .from('unit_tenants')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('unit_id', unitId)
+          .single()
+
+        if (!existingLink) {
+          const { error: linkError } = await supabase
+            .from('unit_tenants')
+            .insert({ tenant_id: tenantId, unit_id: unitId })
+          if (linkError) throw linkError
+        }
       }
 
       // Mark application as converted
