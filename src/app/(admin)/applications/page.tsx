@@ -162,7 +162,7 @@ export default async function ApplicationsPage() {
 
         {/* Pending Application Cards */}
         {pending > 0 && (
-          <div>
+          <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Pending Review ({pending})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {applications?.filter(a => a.status === 'pending').map((app) => (
@@ -220,6 +220,61 @@ export default async function ApplicationsPage() {
                   )}
 
                   {/* Review Notes */}
+                  {app.review_notes && (
+                    <div className="bg-gray-50 rounded p-2 mb-3 text-xs text-gray-600">
+                      📝 {app.review_notes}
+                    </div>
+                  )}
+
+                  <ApplicationActions appId={app.id} currentStatus={app.status} email={app.email} backgroundCheckStatus={app.background_check_status} desiredProperty={app.desired_property} desiredUnit={app.desired_unit} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Approved Application Cards - Ready to Convert */}
+        {approved > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Approved — Ready to Convert ({approved})</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {applications?.filter(a => a.status === 'approved').map((app) => (
+                <div key={app.id} className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">{app.first_name} {app.last_name}</h3>
+                      <p className="text-sm text-gray-500">{app.email} · {app.phone}</p>
+                    </div>
+                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+                      Approved
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                    {app.desired_property && (
+                      <div className="col-span-2 bg-blue-50 rounded px-3 py-2">
+                        <span className="text-gray-500">Assigned Unit:</span>{' '}
+                        <span className="font-medium text-blue-800">{app.desired_property} — Unit {app.desired_unit}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-gray-500">Applied:</span>{' '}
+                      <span className="font-medium">{new Date(app.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Income:</span>{' '}
+                      <span className="font-medium text-green-600">${Number(app.monthly_income || 0).toLocaleString()}/mo</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Employer:</span>{' '}
+                      <span className="font-medium">{app.employer_name || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Reviewed:</span>{' '}
+                      <span className="font-medium">{app.reviewed_at ? new Date(app.reviewed_at).toLocaleDateString() : '—'}</span>
+                    </div>
+                  </div>
+
                   {app.review_notes && (
                     <div className="bg-gray-50 rounded p-2 mb-3 text-xs text-gray-600">
                       📝 {app.review_notes}
