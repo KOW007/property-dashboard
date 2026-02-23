@@ -100,7 +100,7 @@ export default async function RenewalsPage({ searchParams }: { searchParams: Pro
                       {r.tenant_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {r.end_date ? new Date(r.end_date).toLocaleDateString() : '—'}
+                      {r.end_date ? new Date(r.end_date + 'T00:00').toLocaleDateString() : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
                       ${Number(r.current_rent).toLocaleString()}

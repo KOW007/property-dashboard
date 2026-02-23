@@ -58,7 +58,7 @@ export default async function BankTransfersPage({ searchParams }: { searchParams
               transfers.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {t.transfer_date ? new Date(t.transfer_date).toLocaleDateString() : '—'}
+                    {t.transfer_date ? new Date(t.transfer_date + 'T00:00').toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <div className="font-medium text-gray-900">{t.from_account_name || '—'}</div>

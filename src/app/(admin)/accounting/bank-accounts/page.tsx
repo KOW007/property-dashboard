@@ -44,7 +44,7 @@ export default async function BankAccountsPage() {
                     {a.account_number ? `**${a.account_number.slice(-4)}` : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {a.last_reconciliation ? new Date(a.last_reconciliation).toLocaleDateString() : '—'}
+                    {a.last_reconciliation ? new Date(a.last_reconciliation + 'T00:00').toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${a.payments_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>

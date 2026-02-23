@@ -106,7 +106,7 @@ function RenewalForm() {
           <div className="text-6xl mb-4">✓</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Renewal Processed</h2>
           <p className="text-gray-600 mb-6">
-            The lease for {leaseData.tenant_name} has been renewed through {new Date(newEndDate).toLocaleDateString()}.
+            The lease for {leaseData.tenant_name} has been renewed through {new Date(newEndDate + 'T00:00').toLocaleDateString()}.
           </p>
           <Link href="/renewals" className="bg-[#b22625] text-white px-6 py-2 rounded-lg hover:bg-[#8a1d1c]">
             Back to Renewals
@@ -144,7 +144,7 @@ function RenewalForm() {
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Current End Date</label>
-                <p className="text-sm font-medium text-gray-900">{new Date(leaseData.end_date).toLocaleDateString()}</p>
+                <p className="text-sm font-medium text-gray-900">{new Date(leaseData.end_date + 'T00:00').toLocaleDateString()}</p>
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Current Rent</label>
@@ -153,7 +153,7 @@ function RenewalForm() {
               {leaseData.last_lease_renewal && (
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Last Renewal</label>
-                  <p className="text-sm font-medium text-gray-900">{new Date(leaseData.last_lease_renewal).toLocaleDateString()}</p>
+                  <p className="text-sm font-medium text-gray-900">{new Date(leaseData.last_lease_renewal + 'T00:00').toLocaleDateString()}</p>
                 </div>
               )}
             </div>

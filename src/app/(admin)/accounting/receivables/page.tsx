@@ -97,7 +97,7 @@ export default async function ReceivablesPage({ searchParams }: { searchParams: 
               items.map(item => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.date ? new Date(item.date).toLocaleDateString() : '—'}
+                    {item.date ? new Date(item.date + 'T00:00').toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.payer || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{item.gl_account_display || '—'}</td>

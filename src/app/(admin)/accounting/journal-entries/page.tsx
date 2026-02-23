@@ -88,7 +88,7 @@ export default async function JournalEntriesPage({ searchParams }: { searchParam
               entries.map(e => (
                 <tr key={e.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {e.entry_date ? new Date(e.entry_date).toLocaleDateString() : '—'}
+                    {e.entry_date ? new Date(e.entry_date + 'T00:00').toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{e.reference_number || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{e.property_name || '—'}</td>

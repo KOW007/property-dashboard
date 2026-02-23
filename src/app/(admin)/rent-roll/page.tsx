@@ -135,7 +135,13 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                         <td className="px-3 py-2 text-gray-500">
                           {row.bedrooms != null ? `${Math.round(row.bedrooms)}/${Math.round(row.bathrooms || 0)}` : '—'}
                         </td>
-                        <td className="px-3 py-2 text-[#b22625]">{row.tenant_name || '—'}</td>
+                        <td className="px-3 py-2">
+                          {row.tenant_name ? (
+                            <Link href={`/tenants/${row.tenant_id}`} className="text-[#b22625] hover:underline font-medium">
+                              {row.tenant_name}
+                            </Link>
+                          ) : '—'}
+                        </td>
                         <td className="px-3 py-2 text-gray-600 text-xs">{row.additional_tenants || ''}</td>
                         <td className="px-3 py-2">
                           <span className={
@@ -151,9 +157,9 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                         <td className="px-3 py-2 text-right text-gray-700">{Number(row.monthly_rent || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                         <td className="px-3 py-2 text-right text-gray-700">{Number(row.monthly_charges || 0).toFixed(2)}</td>
                         <td className="px-3 py-2 text-right text-gray-700">{Number(row.security_deposit || 0).toFixed(2)}</td>
-                        <td className="px-3 py-2 text-gray-500">{row.move_in_date ? new Date(row.move_in_date).toLocaleDateString() : '—'}</td>
-                        <td className="px-3 py-2 text-gray-500">{row.start_date ? new Date(row.start_date).toLocaleDateString() : '—'}</td>
-                        <td className="px-3 py-2 text-gray-500">{row.end_date ? new Date(row.end_date).toLocaleDateString() : '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{row.move_in_date ? new Date(row.move_in_date + 'T00:00').toLocaleDateString() : '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{row.start_date ? new Date(row.start_date + 'T00:00').toLocaleDateString() : '—'}</td>
+                        <td className="px-3 py-2 text-gray-500">{row.end_date ? new Date(row.end_date + 'T00:00').toLocaleDateString() : '—'}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5">
                             <InviteTenantButton email={row.tenant_email} tenantName={row.tenant_name} />

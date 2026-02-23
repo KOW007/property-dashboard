@@ -64,7 +64,7 @@ export default function PortalPropertyContent({ property, unit, leases, document
             {leases && leases.length > 0 ? (
               <div className="space-y-3">
                 {leases.map((lease, i) => {
-                  const dateRange = `${new Date(lease.start_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} – ${new Date(lease.end_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}`
+                  const dateRange = `${new Date(lease.start_date + 'T00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} – ${new Date(lease.end_date + 'T00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}`
                   return (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                       <div>

@@ -30,7 +30,7 @@ export default function PortalPaymentsContent({ history, isPreview }: Props) {
               {history.map((item, i) => (
                 <div key={i} className="grid grid-cols-3 py-3 text-sm">
                   <span className="text-gray-500">
-                    {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(item.date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                   <span className="text-gray-700">{item.description}</span>
                   <span className={`text-right font-semibold ${item.type === 'receipt' ? 'text-green-600' : 'text-gray-900'}`}>

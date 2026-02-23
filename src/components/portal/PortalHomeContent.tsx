@@ -47,7 +47,7 @@ export default function PortalHomeContent({ charges, lease, openRequests, isPrev
           </div>
           {nextCharge && (
             <p className="text-sm text-gray-500 mb-6">
-              Next bill due on {new Date(nextCharge.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              Next bill due on {new Date(nextCharge.date + 'T00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           )}
 
@@ -80,7 +80,7 @@ export default function PortalHomeContent({ charges, lease, openRequests, isPrev
                     <div>
                       <div className="font-medium text-gray-800">{charge.description}</div>
                       <div className="text-xs text-gray-400">
-                        Due on {new Date(charge.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        Due on {new Date(charge.date + 'T00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </div>
                     </div>
                     <div className="font-semibold text-gray-900">
@@ -110,7 +110,7 @@ export default function PortalHomeContent({ charges, lease, openRequests, isPrev
                 <div>
                   <p className="text-gray-500">Lease Ends</p>
                   <p className="text-xl font-bold text-gray-900">
-                    {new Date(lease.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(lease.end_date + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </p>
                 </div>
               </div>

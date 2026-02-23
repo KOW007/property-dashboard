@@ -48,6 +48,30 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       .eq('id', appId)
 
     if (!error) {
+      // On approval, copy screening & emergency contact data to tenant record
+      if (newStatus === 'approved' && email) {
+        const { data: app } = await supabase
+          .from('tenant_applications')
+          .select('date_of_birth, ssn, gov_id_number, gov_id_issuing_state, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship')
+          .eq('id', appId)
+          .single()
+
+        if (app) {
+          await supabase
+            .from('tenants')
+            .update({
+              birthdate: app.date_of_birth || null,
+              ssn: app.ssn || null,
+              drivers_license: app.gov_id_number || null,
+              drivers_license_state: app.gov_id_issuing_state || null,
+              emergency_contact_name: app.emergency_contact_name || null,
+              emergency_contact_phone: app.emergency_contact_phone || null,
+              emergency_contact_relationship: app.emergency_contact_relationship || null,
+            })
+            .eq('email', email)
+        }
+      }
+
       setStatus(newStatus)
       setShowNotes(false)
       router.refresh()

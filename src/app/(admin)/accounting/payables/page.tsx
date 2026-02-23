@@ -143,14 +143,14 @@ export default async function PayablesPage({ searchParams }: { searchParams: Pro
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.payee}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ref_number || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.bill_date ? new Date(item.bill_date).toLocaleDateString() : '—'}
+                    {item.bill_date ? new Date(item.bill_date + 'T00:00').toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {item.property_name}{item.unit_number ? ` - ${item.unit_number}` : ''}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{item.gl_account_display || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.due_date ? new Date(item.due_date).toLocaleDateString() : '—'}
+                    {item.due_date ? new Date(item.due_date + 'T00:00').toLocaleDateString() : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-600">
                     ${Number(item.amount).toLocaleString()}
