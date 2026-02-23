@@ -10,13 +10,14 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('units')
-    .select('unit_number, property_id, properties(name)')
+    .select('id, unit_number, property_id, properties(name)')
     .order('unit_number')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Format for dropdowns
   const formatted = data?.map((u: any) => ({
+    id: u.id,
     unit_number: u.unit_number,
     property_name: u.properties?.name,
   })) || []

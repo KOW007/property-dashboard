@@ -6,6 +6,7 @@ import TenantPortalActions from '@/components/TenantPortalActions'
 import TenantContactSection from '@/components/TenantContactSection'
 import TenantScreeningSection from '@/components/TenantScreeningSection'
 import TenantEmergencyContactSection from '@/components/TenantEmergencyContactSection'
+import TenantStatusSection from '@/components/TenantStatusSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -203,6 +204,17 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         emergency_contact_name={tenant.emergency_contact_name}
         emergency_contact_phone={tenant.emergency_contact_phone}
         emergency_contact_relationship={tenant.emergency_contact_relationship}
+      />
+
+      {/* Tenant Status */}
+      <TenantStatusSection
+        tenantId={id}
+        status={tenant.status}
+        move_in_date={tenant.move_in_date}
+        move_out_date={tenant.move_out_date}
+        notice_date={tenant.notice_date}
+        move_out_reason={tenant.move_out_reason}
+        send_rent_reminders={tenant.send_rent_reminders}
       />
 
       {/* Insurance - commented out for now

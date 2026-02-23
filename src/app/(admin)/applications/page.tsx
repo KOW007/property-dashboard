@@ -17,6 +17,7 @@ export default async function ApplicationsPage() {
   const approved = applications?.filter(a => a.status === 'approved').length || 0
   const denied = applications?.filter(a => a.status === 'denied').length || 0
   const waitlist = applications?.filter(a => a.status === 'waitlist').length || 0
+  const converted = applications?.filter(a => a.status === 'converted').length || 0
 
   return (
     <div>
@@ -36,7 +37,7 @@ export default async function ApplicationsPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-5">
             <div className="text-sm text-gray-500 mb-1">Total</div>
             <div className="text-3xl font-bold text-gray-900">{total}</div>
@@ -56,6 +57,10 @@ export default async function ApplicationsPage() {
           <div className="bg-white rounded-lg shadow p-5">
             <div className="text-sm text-gray-500 mb-1">Waitlist</div>
             <div className="text-3xl font-bold text-blue-600">{waitlist}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-5">
+            <div className="text-sm text-gray-500 mb-1">Converted</div>
+            <div className="text-3xl font-bold text-purple-600">{converted}</div>
           </div>
         </div>
 
@@ -136,6 +141,7 @@ export default async function ApplicationsPage() {
                         app.status === 'approved' ? 'bg-green-100 text-green-800' :
                         app.status === 'denied' ? 'bg-red-100 text-red-800' :
                         app.status === 'waitlist' ? 'bg-blue-100 text-blue-800' :
+                        app.status === 'converted' ? 'bg-purple-100 text-purple-800' :
                         'bg-yellow-100 text-yellow-800'
                       }`}>
                         {app.status}

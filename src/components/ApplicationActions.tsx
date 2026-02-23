@@ -16,6 +16,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
   const [notes, setNotes] = useState('')
   const [showNotes, setShowNotes] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [converting, setConverting] = useState(false)
   const [editingUnit, setEditingUnit] = useState(false)
   const [unitValue, setUnitValue] = useState(desiredUnit || '')
   const [propertyValue, setPropertyValue] = useState(desiredProperty || '')
@@ -48,30 +49,6 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       .eq('id', appId)
 
     if (!error) {
-      // On approval, copy screening & emergency contact data to tenant record
-      if (newStatus === 'approved' && email) {
-        const { data: app } = await supabase
-          .from('tenant_applications')
-          .select('date_of_birth, ssn, gov_id_number, gov_id_issuing_state, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship')
-          .eq('id', appId)
-          .single()
-
-        if (app) {
-          await supabase
-            .from('tenants')
-            .update({
-              birthdate: app.date_of_birth || null,
-              ssn: app.ssn || null,
-              drivers_license: app.gov_id_number || null,
-              drivers_license_state: app.gov_id_issuing_state || null,
-              emergency_contact_name: app.emergency_contact_name || null,
-              emergency_contact_phone: app.emergency_contact_phone || null,
-              emergency_contact_relationship: app.emergency_contact_relationship || null,
-            })
-            .eq('email', email)
-        }
-      }
-
       setStatus(newStatus)
       setShowNotes(false)
       router.refresh()
@@ -79,6 +56,91 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       alert('Error updating status. Please try again.')
     }
     setSaving(false)
+  }
+
+  const convertToTenant = async () => {
+    if (!email) {
+      alert('Application has no email address.')
+      return
+    }
+    setConverting(true)
+    try {
+      // Fetch full application data
+      const { data: app, error: appError } = await supabase
+        .from('tenant_applications')
+        .select('*')
+        .eq('id', appId)
+        .single()
+
+      if (appError || !app) throw new Error('Could not fetch application data.')
+
+      // Resolve unit_id from property name + unit number
+      let unitId: string | null = null
+      if (app.desired_property && app.desired_unit && app.desired_unit !== 'Not sure yet') {
+        const unitsRes = await fetch('/api/all-units')
+        const allUnits = await unitsRes.json()
+        const match = allUnits.find((u: any) =>
+          u.property_name === app.desired_property && u.unit_number === app.desired_unit
+        )
+        if (match) unitId = match.id
+      }
+
+      const tenantData = {
+        first_name: app.first_name || null,
+        last_name: app.last_name || null,
+        email: app.email,
+        phone: app.phone || null,
+        birthdate: app.date_of_birth || null,
+        ssn: app.ssn || null,
+        drivers_license: app.gov_id_number || null,
+        drivers_license_state: app.gov_id_issuing_state || null,
+        emergency_contact_name: app.emergency_contact_name || null,
+        emergency_contact_phone: app.emergency_contact_phone || null,
+        emergency_contact_relationship: app.emergency_contact_relationship || null,
+        pets: app.pet_details || null,
+        license_plates: app.vehicle_1_license_plate || null,
+        unit_id: unitId,
+        status: 'Future',
+        is_primary_tenant: true,
+      }
+
+      // Check if tenant already exists
+      const { data: existing } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('email', app.email)
+        .single()
+
+      if (existing) {
+        // Update existing tenant
+        const { error: updateError } = await supabase
+          .from('tenants')
+          .update(tenantData)
+          .eq('id', existing.id)
+        if (updateError) throw updateError
+      } else {
+        // Insert new tenant
+        const { error: insertError } = await supabase
+          .from('tenants')
+          .insert(tenantData)
+        if (insertError) throw insertError
+      }
+
+      // Mark application as converted
+      const { error: convertError } = await supabase
+        .from('tenant_applications')
+        .update({ status: 'converted' })
+        .eq('id', appId)
+      if (convertError) throw convertError
+
+      setStatus('converted')
+      router.refresh()
+    } catch (err: any) {
+      console.error('Error converting to tenant:', err)
+      alert('Error converting to tenant: ' + (err.message || 'Please try again.'))
+    } finally {
+      setConverting(false)
+    }
   }
 
   const saveUnit = async () => {
@@ -188,7 +250,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         />
       )}
       <div className="flex gap-2">
-        {status !== 'approved' && (
+        {status !== 'approved' && status !== 'converted' && (
           <button
             onClick={() => { setShowNotes(true); updateStatus('approved') }}
             disabled={saving}
@@ -197,7 +259,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
             ✓ Approve
           </button>
         )}
-        {status !== 'denied' && (
+        {status !== 'denied' && status !== 'converted' && (
           <button
             onClick={() => { setShowNotes(true); updateStatus('denied') }}
             disabled={saving}
@@ -206,7 +268,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
             ✗ Deny
           </button>
         )}
-        {status !== 'waitlist' && (
+        {status !== 'waitlist' && status !== 'converted' && (
           <button
             onClick={() => { setShowNotes(true); updateStatus('waitlist') }}
             disabled={saving}
@@ -215,18 +277,33 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
             Waitlist
           </button>
         )}
-        <button
-          onClick={() => setShowNotes(!showNotes)}
-          className="px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-          title="Add notes"
-        >
-          📝
-        </button>
+        {status !== 'converted' && (
+          <button
+            onClick={() => setShowNotes(!showNotes)}
+            className="px-3 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm"
+            title="Add notes"
+          >
+            📝
+          </button>
+        )}
       </div>
+
+      {/* Convert to Tenant button - only for approved applications */}
+      {status === 'approved' && (
+        <button
+          onClick={convertToTenant}
+          disabled={converting}
+          className="w-full bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 text-sm font-medium disabled:opacity-50"
+        >
+          {converting ? 'Converting...' : '→ Convert to Tenant'}
+        </button>
+      )}
+
       {status !== 'pending' && (
         <div className={`text-xs text-center font-medium py-1 rounded ${
           status === 'approved' ? 'text-green-600 bg-green-50' :
           status === 'denied' ? 'text-red-600 bg-red-50' :
+          status === 'converted' ? 'text-purple-600 bg-purple-50' :
           'text-yellow-600 bg-yellow-50'
         }`}>
           Status: {status.charAt(0).toUpperCase() + status.slice(1)}
