@@ -145,7 +145,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       const { error: leaseError } = await supabase
         .from('leases')
         .insert({
-          id: tenantId,
+          tenant_id: tenantId,
           unit_id: unitId,
           monthly_rent: Number(leaseData.monthly_rent),
           security_deposit: leaseData.security_deposit ? Number(leaseData.security_deposit) : null,
