@@ -141,24 +141,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         tenantId = newTenant.id
       }
 
-      // Link tenant to unit via unit_tenants junction table
-      if (unitId) {
-        const { data: existingLink } = await supabase
-          .from('unit_tenants')
-          .select('id')
-          .eq('id', tenantId)
-          .eq('unit_id', unitId)
-          .single()
-
-        if (!existingLink) {
-          const { error: linkError } = await supabase
-            .from('unit_tenants')
-            .insert({ id: tenantId, unit_id: unitId, first_name: app.first_name || null, last_name: app.last_name || null })
-          if (linkError) throw linkError
-        }
-      }
-
-      // Create lease record
+      // Create lease record (unit_tenants view derives from leases.unit_id)
       const { error: leaseError } = await supabase
         .from('leases')
         .insert({
