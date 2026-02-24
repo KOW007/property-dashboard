@@ -17,6 +17,14 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
   const [showNotes, setShowNotes] = useState(false)
   const [saving, setSaving] = useState(false)
   const [converting, setConverting] = useState(false)
+  const [showLeaseForm, setShowLeaseForm] = useState(false)
+  const [leaseData, setLeaseData] = useState({
+    monthly_rent: '',
+    security_deposit: '',
+    start_date: '',
+    end_date: '',
+    move_in_date: '',
+  })
   const [editingUnit, setEditingUnit] = useState(false)
   const [unitValue, setUnitValue] = useState(desiredUnit || '')
   const [propertyValue, setPropertyValue] = useState(desiredProperty || '')
@@ -63,6 +71,10 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       alert('Application has no email address.')
       return
     }
+    if (!leaseData.monthly_rent || !leaseData.start_date || !leaseData.end_date || !leaseData.move_in_date) {
+      alert('Please fill in all required lease fields.')
+      return
+    }
     setConverting(true)
     try {
       // Fetch full application data
@@ -101,6 +113,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         license_plates: app.vehicle_1_license_plate || null,
         status: 'Future',
         is_primary_tenant: true,
+        move_in_date: leaseData.move_in_date || null,
       }
 
       // Check if tenant already exists
@@ -112,7 +125,6 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
 
       let tenantId: string
       if (existing) {
-        // Update existing tenant
         const { error: updateError } = await supabase
           .from('tenants')
           .update(tenantData)
@@ -120,7 +132,6 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         if (updateError) throw updateError
         tenantId = existing.id
       } else {
-        // Insert new tenant
         const { data: newTenant, error: insertError } = await supabase
           .from('tenants')
           .insert(tenantData)
@@ -132,7 +143,6 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
 
       // Link tenant to unit via unit_tenants junction table
       if (unitId) {
-        // Check if link already exists
         const { data: existingLink } = await supabase
           .from('unit_tenants')
           .select('id')
@@ -148,6 +158,20 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         }
       }
 
+      // Create lease record
+      const { error: leaseError } = await supabase
+        .from('leases')
+        .insert({
+          tenant_id: tenantId,
+          unit_id: unitId,
+          monthly_rent: Number(leaseData.monthly_rent),
+          security_deposit: leaseData.security_deposit ? Number(leaseData.security_deposit) : null,
+          start_date: leaseData.start_date,
+          end_date: leaseData.end_date,
+          move_in_date: leaseData.move_in_date,
+        })
+      if (leaseError) throw leaseError
+
       // Mark application as converted
       const { error: convertError } = await supabase
         .from('tenant_applications')
@@ -156,6 +180,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       if (convertError) throw convertError
 
       setStatus('converted')
+      setShowLeaseForm(false)
       router.refresh()
     } catch (err: any) {
       console.error('Error converting to tenant:', err)
@@ -310,15 +335,81 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         )}
       </div>
 
-      {/* Convert to Tenant button - only for approved applications */}
-      {status === 'approved' && (
+      {/* Convert to Tenant - show button or lease form */}
+      {status === 'approved' && !showLeaseForm && (
         <button
-          onClick={convertToTenant}
-          disabled={converting}
-          className="w-full bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 text-sm font-medium disabled:opacity-50"
+          onClick={() => setShowLeaseForm(true)}
+          className="w-full bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 text-sm font-medium"
         >
-          {converting ? 'Converting...' : '→ Convert to Tenant'}
+          → Convert to Tenant
         </button>
+      )}
+
+      {showLeaseForm && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-purple-800">Lease Details</h3>
+            <button onClick={() => setShowLeaseForm(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Rent *</label>
+              <input
+                type="number"
+                value={leaseData.monthly_rent}
+                onChange={e => setLeaseData(prev => ({ ...prev, monthly_rent: e.target.value }))}
+                placeholder="1200"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Security Deposit</label>
+              <input
+                type="number"
+                value={leaseData.security_deposit}
+                onChange={e => setLeaseData(prev => ({ ...prev, security_deposit: e.target.value }))}
+                placeholder="1200"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Lease Start *</label>
+              <input
+                type="date"
+                value={leaseData.start_date}
+                onChange={e => setLeaseData(prev => ({ ...prev, start_date: e.target.value }))}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Lease End *</label>
+              <input
+                type="date"
+                value={leaseData.end_date}
+                onChange={e => setLeaseData(prev => ({ ...prev, end_date: e.target.value }))}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Move-In Date *</label>
+              <input
+                type="date"
+                value={leaseData.move_in_date}
+                onChange={e => setLeaseData(prev => ({ ...prev, move_in_date: e.target.value }))}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+              />
+            </div>
+          </div>
+          <button
+            onClick={convertToTenant}
+            disabled={converting}
+            className="w-full bg-purple-600 text-white py-2 rounded text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+          >
+            {converting ? 'Converting...' : 'Create Tenant & Lease'}
+          </button>
+        </div>
       )}
 
       {status !== 'pending' && (
