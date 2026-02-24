@@ -146,14 +146,14 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
         const { data: existingLink } = await supabase
           .from('unit_tenants')
           .select('id')
-          .eq('tenant_id', tenantId)
+          .eq('id', tenantId)
           .eq('unit_id', unitId)
           .single()
 
         if (!existingLink) {
           const { error: linkError } = await supabase
             .from('unit_tenants')
-            .insert({ tenant_id: tenantId, unit_id: unitId })
+            .insert({ id: tenantId, unit_id: unitId, first_name: app.first_name || null, last_name: app.last_name || null })
           if (linkError) throw linkError
         }
       }
@@ -162,7 +162,7 @@ export default function ApplicationActions({ appId, currentStatus, email, backgr
       const { error: leaseError } = await supabase
         .from('leases')
         .insert({
-          tenant_id: tenantId,
+          id: tenantId,
           unit_id: unitId,
           monthly_rent: Number(leaseData.monthly_rent),
           security_deposit: leaseData.security_deposit ? Number(leaseData.security_deposit) : null,
