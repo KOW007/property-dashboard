@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import TenantActivitySection from '@/components/TenantActivitySection'
 import TenantPortalActions from '@/components/TenantPortalActions'
 import TenantContactSection from '@/components/TenantContactSection'
+import TenantLeaseSection from '@/components/TenantLeaseSection'
 import TenantScreeningSection from '@/components/TenantScreeningSection'
 import TenantEmergencyContactSection from '@/components/TenantEmergencyContactSection'
 import TenantStatusSection from '@/components/TenantStatusSection'
@@ -142,49 +143,19 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         />
 
         {/* Lease Info */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Lease Details</h2>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Monthly Rent</dt>
-              <dd className="text-gray-900 font-medium">{fmtMoney(lease?.monthly_rent)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Security Deposit</dt>
-              <dd className="text-gray-900 font-medium">{fmtMoney(lease?.security_deposit)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Lease Start</dt>
-              <dd className="text-gray-900 font-medium">{fmt(lease?.start_date)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Lease End</dt>
-              <dd className="text-gray-900 font-medium">{fmt(lease?.end_date)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Move-in Date</dt>
-              <dd className="text-gray-900 font-medium">{fmt(lease?.move_in_date)}</dd>
-            </div>
-            {lease?.last_lease_renewal && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Last Renewal</dt>
-                <dd className="text-gray-900 font-medium">{fmt(lease.last_lease_renewal)}</dd>
-              </div>
-            )}
-            {lease?.next_rent_increase_date && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Next Rent Increase</dt>
-                <dd className="text-gray-900 font-medium">{fmt(lease.next_rent_increase_date)}</dd>
-              </div>
-            )}
-            {lease?.tenant_tags && (
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Tags</dt>
-                <dd className="text-gray-900 font-medium">{lease.tenant_tags}</dd>
-              </div>
-            )}
-          </dl>
-        </div>
+        <TenantLeaseSection
+          leaseId={lease?.id ?? null}
+          monthly_rent={lease?.monthly_rent ?? null}
+          security_deposit={lease?.security_deposit ?? null}
+          start_date={lease?.start_date ?? null}
+          end_date={lease?.end_date ?? null}
+          move_in_date={lease?.move_in_date ?? null}
+          last_lease_renewal={lease?.last_lease_renewal ?? null}
+          next_rent_increase_date={lease?.next_rent_increase_date ?? null}
+          tenant_tags={lease?.tenant_tags ?? null}
+          lease_status={lease?.lease_status ?? null}
+          notes={lease?.notes ?? null}
+        />
       </div>
 
       {/* Screening */}
@@ -350,13 +321,6 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         )}
       </div>
 
-      {/* Lease Notes */}
-      {lease?.notes && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Lease Notes</h2>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{lease.notes}</p>
-        </div>
-      )}
     </div>
   )
 }

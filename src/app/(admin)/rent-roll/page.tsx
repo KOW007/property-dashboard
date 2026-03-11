@@ -1,4 +1,5 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import InviteTenantButton from '@/components/InviteTenantButton'
 
@@ -20,6 +21,14 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
   }
 
   const { data: rentRoll } = await query
+
+  // Fetch existing auth users to know who's already been invited
+  const serviceClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data: { users } } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
+  const invitedEmails = new Set(users?.map(u => u.email?.toLowerCase()).filter(Boolean))
 
   // Get unique properties for filter
   const allProperties = [...new Set(rentRoll?.map(r => r.property_name).filter(Boolean))]
@@ -162,7 +171,7 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                         <td className="px-3 py-2 text-gray-500">{row.end_date ? new Date(row.end_date + 'T00:00').toLocaleDateString() : '—'}</td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1.5">
-                            <InviteTenantButton email={row.tenant_email} tenantName={row.tenant_name} />
+                            <InviteTenantButton email={row.tenant_email} tenantName={row.tenant_name} alreadyInvited={!!row.tenant_email && invitedEmails.has(row.tenant_email.toLowerCase())} />
                             {row.tenant_email && (
                               <Link
                                 href={`/portal-preview?email=${encodeURIComponent(row.tenant_email)}`}

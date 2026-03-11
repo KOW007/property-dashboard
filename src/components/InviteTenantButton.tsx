@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 
-export default function InviteTenantButton({ email, tenantName }: { email?: string | null, tenantName?: string | null }) {
+export default function InviteTenantButton({ email, tenantName, alreadyInvited }: { email?: string | null, tenantName?: string | null, alreadyInvited?: boolean }) {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
-  if (!email) return null
+  if (!email || alreadyInvited) return null
 
   const handleInvite = async () => {
     if (status === 'sent') return

@@ -8,22 +8,63 @@ export default async function RenewalsPage({ searchParams }: { searchParams: Pro
   const params = await searchParams
   const propertyFilter = params.property
 
+  // Calculate date window: today through 90 days from now
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const in90Days = new Date(today)
+  in90Days.setDate(today.getDate() + 90)
+
+  const todayStr = today.toISOString().split('T')[0]
+  const in90Str = in90Days.toISOString().split('T')[0]
+
+  // Query leases expiring within the next 90 days, joined with tenant + unit + property
   let query = supabase
-    .from('lease_renewals')
-    .select('*')
-    .order('days_remaining')
+    .from('leases')
+    .select(`
+      id,
+      end_date,
+      monthly_rent,
+      tenant_id,
+      unit_id,
+      tenants ( id, first_name, last_name, status ),
+      units ( unit_number, properties ( name ) )
+    `)
+    .gte('end_date', todayStr)
+    .lte('end_date', in90Str)
+    .order('end_date', { ascending: true })
 
-  if (propertyFilter) {
-    query = query.eq('property_name', propertyFilter)
-  }
+  const { data: leases, error } = await query
 
-  const { data: renewals } = await query
+  // Filter by property name if requested
+  const allRenewals = (leases || []).map(l => {
+    const tenant = l.tenants as any
+    const unit = l.units as any
+    const property = unit?.properties as any
+    const daysRemaining = Math.ceil(
+      (new Date(l.end_date + 'T00:00').getTime() - today.getTime()) / 86400000
+    )
+    return {
+      lease_id: l.id,
+      end_date: l.end_date,
+      monthly_rent: l.monthly_rent,
+      tenant_id: tenant?.id,
+      tenant_name: tenant ? `${tenant.first_name || ''} ${tenant.last_name || ''}`.trim() : '—',
+      tenant_status: tenant?.status,
+      unit_number: unit?.unit_number,
+      property_name: property?.name,
+      days_remaining: daysRemaining,
+    }
+  })
 
-  const properties = [...new Set(renewals?.map(r => r.property_name).filter(Boolean))]
+  const renewals = propertyFilter
+    ? allRenewals.filter(r => r.property_name === propertyFilter)
+    : allRenewals
 
-  const totalExpiring = renewals?.length || 0
-  const expiring30 = renewals?.filter(r => r.days_remaining <= 30).length || 0
-  const expiring60 = renewals?.filter(r => r.days_remaining <= 60).length || 0
+  const properties = [...new Set(allRenewals.map(r => r.property_name).filter(Boolean))] as string[]
+
+  const totalExpiring = renewals.length
+  const expiring30 = renewals.filter(r => r.days_remaining <= 30).length
+  const expiring60 = renewals.filter(r => r.days_remaining <= 60).length
 
   return (
     <div>
@@ -31,7 +72,6 @@ export default async function RenewalsPage({ searchParams }: { searchParams: Pro
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-
             <h1 className="text-4xl font-bold text-gray-900">Lease Renewals</h1>
             <p className="text-gray-600 mt-2">Leases expiring within 90 days</p>
           </div>
@@ -89,21 +129,27 @@ export default async function RenewalsPage({ searchParams }: { searchParams: Pro
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {renewals && renewals.length > 0 ? (
+              {renewals.length > 0 ? (
                 renewals.map((r) => (
                   <tr key={r.lease_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm">
-                      <div className="font-medium text-gray-900">{r.property_name}</div>
-                      <div className="text-gray-500">Unit {r.unit_number}</div>
+                      <div className="font-medium text-gray-900">{r.property_name || '—'}</div>
+                      <div className="text-gray-500">Unit {r.unit_number || '—'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {r.tenant_name}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {r.tenant_id ? (
+                        <Link href={`/tenants/${r.tenant_id}`} className="text-[#b22625] hover:underline font-medium">
+                          {r.tenant_name}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-900">{r.tenant_name}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {r.end_date ? new Date(r.end_date + 'T00:00').toLocaleDateString() : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                      ${Number(r.current_rent).toLocaleString()}
+                      {r.monthly_rent != null ? `$${Number(r.monthly_rent).toLocaleString()}` : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

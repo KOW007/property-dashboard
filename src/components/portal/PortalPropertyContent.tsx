@@ -49,8 +49,7 @@ export default function PortalPropertyContent({ property, unit, leases, document
             <h2 className="text-lg font-semibold text-gray-700 mb-4">Address</h2>
             {property ? (
               <div className="text-gray-700">
-                <p>{property.address}</p>
-                <p>{unit?.unit_number}</p>
+                <p>{property.address}{unit?.unit_number ? `, Unit ${unit.unit_number}` : ''}</p>
                 <p>{property.city}, {property.state} {property.zip}</p>
               </div>
             ) : (
