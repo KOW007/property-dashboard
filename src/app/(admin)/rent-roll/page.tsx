@@ -30,8 +30,61 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
   const { data: { users } } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
   const invitedEmails = new Set(users?.map(u => u.email?.toLowerCase()).filter(Boolean))
 
-  // Get unique properties for filter
-  const allProperties = [...new Set(rentRoll?.map(r => r.property_name).filter(Boolean))]
+  // Find vacant units (no active lease)
+  const today_iso = new Date().toISOString().split('T')[0]
+  const { data: activeLeaseUnits } = await supabase
+    .from('leases')
+    .select('unit_id')
+    .gte('end_date', today_iso)
+  const activeUnitIds = new Set(activeLeaseUnits?.map(l => l.unit_id).filter(Boolean))
+
+  const { data: allUnitData } = await supabase
+    .from('units')
+    .select('id, unit_number, bedrooms, bathrooms, square_feet, market_rent, property_id')
+  const { data: allPropertyData } = await supabase
+    .from('properties')
+    .select('id, name, address, city, state, zip')
+  const propertyMap = new Map(allPropertyData?.map(p => [p.id, p]))
+
+  let vacantRows = (allUnitData ?? [])
+    .filter(u => !activeUnitIds.has(u.id))
+    .map(u => {
+      const prop = propertyMap.get(u.property_id)
+      return {
+        property_name: prop?.name ?? 'Unknown',
+        address: prop?.address ?? null,
+        city: prop?.city ?? null,
+        state: prop?.state ?? null,
+        zip: prop?.zip ?? null,
+        unit_number: u.unit_number,
+        bedrooms: u.bedrooms,
+        bathrooms: u.bathrooms,
+        square_feet: u.square_feet,
+        market_rent: u.market_rent,
+        tenant_name: null,
+        tenant_email: null,
+        tenant_id: null,
+        status: 'Vacant',
+        lease_id: null,
+        start_date: null,
+        end_date: null,
+        monthly_rent: null,
+        security_deposit: null,
+        move_in_date: null,
+        monthly_charges: null,
+        additional_tenants: null,
+      }
+    })
+
+  if (propertyFilter) {
+    vacantRows = vacantRows.filter(r => r.property_name === propertyFilter)
+  }
+
+  // Get unique properties for filter (include properties with only vacant units)
+  const allProperties = [...new Set([
+    ...(rentRoll?.map(r => r.property_name).filter(Boolean) ?? []),
+    ...(allPropertyData?.map(p => p.name).filter(Boolean) ?? []),
+  ])].sort()
 
   // Group by property
   const grouped: Record<string, typeof rentRoll> = {}
@@ -40,10 +93,22 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
     if (!grouped[prop]) grouped[prop] = []
     grouped[prop]!.push(row)
   })
+  // Add vacant rows
+  vacantRows.forEach(row => {
+    const prop = row.property_name
+    if (!grouped[prop]) grouped[prop] = []
+    grouped[prop]!.push(row as any)
+  })
+  // Sort each group by unit number
+  Object.values(grouped).forEach(rows => {
+    rows?.sort((a, b) =>
+      String(a.unit_number ?? '').localeCompare(String(b.unit_number ?? ''), undefined, { numeric: true })
+    )
+  })
 
   // Grand totals
   const grandTotals = {
-    units: rentRoll?.length || 0,
+    units: (rentRoll?.length || 0) + vacantRows.length,
     sqft: rentRoll?.reduce((s, r) => s + Number(r.square_feet || 0), 0) || 0,
     marketRent: rentRoll?.reduce((s, r) => s + Number(r.market_rent || 0), 0) || 0,
     rent: rentRoll?.reduce((s, r) => s + Number(r.monthly_rent || 0), 0) || 0,
@@ -154,6 +219,7 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                         <td className="px-3 py-2 text-gray-600 text-xs">{row.additional_tenants || ''}</td>
                         <td className="px-3 py-2">
                           <span className={
+                            row.status === 'Vacant' ? 'text-gray-400 italic' :
                             row.status === 'Notice-Unrented' ? 'text-yellow-700' :
                             row.status === 'Notice-Rented' ? 'text-[#8a1d1c]' :
                             'text-gray-700'
