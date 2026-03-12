@@ -9,10 +9,9 @@ const navItems = [
   { label: 'Rent Roll', href: '/rent-roll' },
   { label: 'Move Ins/Outs', href: '/move-ins-outs' },
   { label: 'Vacancies', href: '/vacancies' },
-  { label: 'Work Orders', href: '/work-orders' },
+  { label: 'Maintenance', href: '/work-orders' },
   { label: 'Renewals', href: '/renewals' },
   { label: 'Applications', href: '/applications' },
-  { label: 'Service Requests', href: '/service-request' },
   { label: 'Accounting', href: '/accounting/receivables' },
   { label: 'Tenant Portals', href: '/portal-preview' },
 ]

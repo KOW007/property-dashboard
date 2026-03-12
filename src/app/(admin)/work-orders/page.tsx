@@ -80,8 +80,8 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
         <div className="flex items-center justify-between mb-8">
           <div>
 
-            <h1 className="text-4xl font-bold text-gray-900">Work Orders</h1>
-            <p className="text-gray-600 mt-2">Maintenance requests and service orders</p>
+            <h1 className="text-4xl font-bold text-gray-900">Maintenance</h1>
+            <p className="text-gray-600 mt-2">Maintenance requests and work orders</p>
           </div>
           <Link
             href="/work-orders/new"
