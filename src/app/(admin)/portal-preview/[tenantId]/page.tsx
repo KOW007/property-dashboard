@@ -37,7 +37,15 @@ export default async function PortalPreviewPage({
 
   if (!tenant) notFound()
 
-  // Get unit_id from most recent lease
+  // Use rent_roll — already has address/unit info joined correctly
+  const { data: rentRow } = await supabase
+    .from('rent_roll')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .limit(1)
+    .single()
+
+  // Get unit_id from lease for downstream queries
   const { data: recentLease } = await supabase
     .from('leases')
     .select('unit_id')
@@ -47,18 +55,15 @@ export default async function PortalPreviewPage({
     .single()
   const unitId = recentLease?.unit_id ?? null
 
-  // Get unit, then property separately (avoids relying on FK join)
-  const { data: unit } = unitId ? await supabase
-    .from('units')
-    .select('unit_number, property_id')
-    .eq('id', unitId)
-    .single() : { data: null }
-
-  const { data: property } = unit?.property_id ? await supabase
-    .from('properties')
-    .select('name, address, city, state, zip, phone')
-    .eq('id', unit.property_id)
-    .single() : { data: null }
+  const unit = rentRow ? { unit_number: rentRow.unit_number } : null
+  const property = rentRow ? {
+    name: rentRow.property_name,
+    address: rentRow.address,
+    city: rentRow.city,
+    state: rentRow.state,
+    zip: rentRow.zip,
+    phone: null,
+  } : null
   const propertyAddress = property
     ? `${property.address}, Unit ${unit?.unit_number}, ${property.city}, ${property.state} ${property.zip}`
     : ''

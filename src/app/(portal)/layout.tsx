@@ -19,27 +19,21 @@ export default async function PortalLayout({ children }: { children: React.React
     .eq('email', user.email)
     .single()
 
-  // Get unit_id from most recent lease
-  const { data: recentLease } = tenant ? await supabase
-    .from('leases')
-    .select('unit_id')
+  // Use rent_roll — already has address/unit info joined correctly
+  const { data: rentRow } = tenant ? await supabase
+    .from('rent_roll')
+    .select('*')
     .eq('tenant_id', tenant.id)
-    .order('end_date', { ascending: false })
     .limit(1)
     .single() : { data: null }
 
-  // Get unit, then property separately (avoids relying on FK join)
-  const { data: unit } = recentLease?.unit_id ? await supabase
-    .from('units')
-    .select('unit_number, property_id')
-    .eq('id', recentLease.unit_id)
-    .single() : { data: null }
-
-  const property = unit?.property_id ? (await supabase
-    .from('properties')
-    .select('name, address, city, state, zip')
-    .eq('id', unit.property_id)
-    .single()).data : null
+  const unit = rentRow ? { unit_number: rentRow.unit_number } : null
+  const property = rentRow ? {
+    address: rentRow.address,
+    city: rentRow.city,
+    state: rentRow.state,
+    zip: rentRow.zip,
+  } : null
   const propertyAddress = property
     ? `${property.address}, ${unit?.unit_number}, ${property.city}, ${property.state} ${property.zip}`
     : ''

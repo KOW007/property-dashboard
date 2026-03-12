@@ -25,17 +25,22 @@ export default async function PortalPropertyPage() {
 
   const unitId = recentLease?.unit_id ?? null
 
-  const { data: unit } = unitId ? await supabase
-    .from('units')
-    .select('unit_number, property_id')
-    .eq('id', unitId)
+  // Use rent_roll — already has address/unit info joined correctly
+  const { data: rentRow } = tenant ? await supabase
+    .from('rent_roll')
+    .select('*')
+    .eq('tenant_id', tenant.id)
+    .limit(1)
     .single() : { data: null }
 
-  const { data: property } = unit?.property_id ? await supabase
-    .from('properties')
-    .select('name, address, city, state, zip')
-    .eq('id', unit.property_id)
-    .single() : { data: null }
+  const unit = rentRow ? { unit_number: rentRow.unit_number } : null
+  const property = rentRow ? {
+    name: rentRow.property_name,
+    address: rentRow.address,
+    city: rentRow.city,
+    state: rentRow.state,
+    zip: rentRow.zip,
+  } : null
 
   const { data: leases } = unitId ? await supabase
     .from('leases')
