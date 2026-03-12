@@ -38,21 +38,21 @@ export default async function PortalPreviewPage({
   if (!tenant) notFound()
 
   // Use rent_roll — already has address/unit info joined correctly
-  const { data: rentRow } = await supabase
+  const { data: rentRows } = await supabase
     .from('rent_roll')
     .select('*')
     .eq('tenant_id', tenantId)
     .limit(1)
-    .single()
+  const rentRow = rentRows?.[0] ?? null
 
   // Get unit_id from lease for downstream queries
-  const { data: recentLease } = await supabase
+  const { data: leaseRows } = await supabase
     .from('leases')
     .select('unit_id')
     .eq('tenant_id', tenant.id)
     .order('end_date', { ascending: false })
     .limit(1)
-    .single()
+  const recentLease = leaseRows?.[0] ?? null
   const unitId = recentLease?.unit_id ?? null
 
   const unit = rentRow ? { unit_number: rentRow.unit_number } : null
