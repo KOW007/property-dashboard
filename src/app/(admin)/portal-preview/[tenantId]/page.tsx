@@ -62,7 +62,6 @@ export default async function PortalPreviewPage({
     city: rentRow.city,
     state: rentRow.state,
     zip: rentRow.zip,
-    phone: null,
   } : null
   const propertyAddress = property
     ? `${property.address}, Unit ${unit?.unit_number}, ${property.city}, ${property.state} ${property.zip}`
