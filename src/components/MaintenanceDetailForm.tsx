@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -36,17 +36,58 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
     notes: request.notes ?? '',
     completed_date: request.completed_date ?? '',
   })
+  const [permissionToEnter, setPermissionToEnter] = useState<boolean | null>(request.permission_to_enter ?? null)
+  const [existingPhotos, setExistingPhotos] = useState<string[]>(request.photo_urls ?? [])
+  const [newPhotos, setNewPhotos] = useState<File[]>([])
+  const [newPreviews, setNewPreviews] = useState<string[]>([])
+  const [uploadProgress, setUploadProgress] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-
-  const photos: string[] = request.photo_urls ?? []
-  const permissionToEnter: boolean | null = request.permission_to_enter ?? null
 
   const inputClass = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#b22625]'
 
+  const handleNewPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    const combined = [...newPhotos, ...files].slice(0, Math.max(0, 5 - existingPhotos.length))
+    setNewPhotos(combined)
+    setNewPreviews(combined.map(f => URL.createObjectURL(f)))
+    e.target.value = ''
+  }
+
+  const removeExistingPhoto = (index: number) => {
+    setExistingPhotos(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const removeNewPhoto = (index: number) => {
+    const next = newPhotos.filter((_, i) => i !== index)
+    setNewPhotos(next)
+    setNewPreviews(next.map(f => URL.createObjectURL(f)))
+  }
+
   const handleSave = async () => {
     setSaving(true)
+
+    // Upload new photos
+    const uploadedUrls: string[] = []
+    for (let i = 0; i < newPhotos.length; i++) {
+      const file = newPhotos[i]
+      setUploadProgress(`Uploading photo ${i + 1} of ${newPhotos.length}...`)
+      const ext = file.name.split('.').pop()
+      const path = `${request.unit_id}/${Date.now()}-${i}.${ext}`
+      const { data, error } = await supabase.storage
+        .from('maintenance-photos')
+        .upload(path, file, { upsert: true })
+      if (!error && data) {
+        const { data: urlData } = supabase.storage.from('maintenance-photos').getPublicUrl(data.path)
+        uploadedUrls.push(urlData.publicUrl)
+      }
+    }
+    setUploadProgress('')
+
+    const allPhotos = [...existingPhotos, ...uploadedUrls]
+
     await supabase
       .from('maintenance_requests')
       .update({
@@ -57,8 +98,13 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
         actual_cost: form.actual_cost !== '' ? Number(form.actual_cost) : null,
         notes: form.notes || null,
         completed_date: form.completed_date || null,
+        permission_to_enter: permissionToEnter,
+        photo_urls: allPhotos.length > 0 ? allPhotos : null,
       })
       .eq('id', request.id)
+
+    setNewPhotos([])
+    setNewPreviews([])
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
@@ -114,15 +160,20 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
           {/* Permission to Enter */}
           <div className="bg-white rounded-lg shadow p-4">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Permission to Enter</h2>
-            {permissionToEnter === true && (
-              <p className="text-sm text-green-700 font-medium">✓ Yes, may enter</p>
-            )}
-            {permissionToEnter === false && (
-              <p className="text-sm text-red-700 font-medium">✗ No — call to schedule</p>
-            )}
-            {permissionToEnter === null && (
-              <p className="text-sm text-gray-400">Not specified</p>
-            )}
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="radio" checked={permissionToEnter === true} onChange={() => setPermissionToEnter(true)} />
+                Yes, may enter
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="radio" checked={permissionToEnter === false} onChange={() => setPermissionToEnter(false)} />
+                No — call to schedule
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                <input type="radio" checked={permissionToEnter === null} onChange={() => setPermissionToEnter(null)} />
+                Not specified
+              </label>
+            </div>
           </div>
 
           {/* Dates */}
@@ -153,22 +204,46 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
           )}
 
           {/* Photos */}
-          {photos.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-4">
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Photos</h2>
-              <div className="flex flex-wrap gap-3">
-                {photos.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={url}
-                      alt={`Photo ${i + 1}`}
-                      className="w-28 h-28 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
-                    />
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Photos</h2>
+            <div className="flex flex-wrap gap-3 mb-3">
+              {existingPhotos.map((url, i) => (
+                <div key={i} className="relative">
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    <img src={url} alt={`Photo ${i + 1}`} className="w-28 h-28 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity" />
                   </a>
-                ))}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => removeExistingPhoto(i)}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  >×</button>
+                </div>
+              ))}
+              {newPreviews.map((src, i) => (
+                <div key={`new-${i}`} className="relative">
+                  <img src={src} alt={`New photo ${i + 1}`} className="w-28 h-28 object-cover rounded-lg border-2 border-dashed border-blue-300" />
+                  <button
+                    type="button"
+                    onClick={() => removeNewPhoto(i)}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  >×</button>
+                </div>
+              ))}
             </div>
-          )}
+            {(existingPhotos.length + newPhotos.length) < 5 && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-600"
+              >
+                + Add Photo(s)
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleNewPhotos} />
+            {existingPhotos.length === 0 && newPhotos.length === 0 && (
+              <p className="text-sm text-gray-400">No photos</p>
+            )}
+          </div>
 
           {/* Editable fields */}
           <div className="bg-white rounded-lg shadow p-4 space-y-4">
@@ -265,7 +340,7 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
                 disabled={saving}
                 className="bg-[#b22625] text-white px-6 py-2 rounded-lg hover:bg-[#8a1d1c] disabled:bg-gray-400 font-medium text-sm"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? (uploadProgress || 'Saving...') : 'Save Changes'}
               </button>
               {saved && <span className="text-green-600 text-sm">✓ Saved</span>}
             </div>
