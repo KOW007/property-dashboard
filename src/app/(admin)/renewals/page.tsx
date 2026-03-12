@@ -56,9 +56,9 @@ export default async function RenewalsPage({ searchParams }: { searchParams: Pro
     }
   })
 
-  const renewals = propertyFilter
-    ? allRenewals.filter(r => r.property_name === propertyFilter)
-    : allRenewals
+  const renewals = allRenewals
+    .filter(r => r.tenant_status !== 'Notice')
+    .filter(r => !propertyFilter || r.property_name === propertyFilter)
 
   const properties = [...new Set(allRenewals.map(r => r.property_name).filter(Boolean))] as string[]
 
