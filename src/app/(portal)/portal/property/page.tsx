@@ -11,27 +11,37 @@ export default async function PortalPropertyPage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, unit_id')
+    .select('id')
     .eq('email', user.email)
     .single()
 
-  const { data: unit } = tenant ? await supabase
-    .from('units')
-    .select('unit_number, property_id, properties(name, address, city, state, zip)')
-    .eq('id', tenant.unit_id)
+  const { data: recentLease } = tenant ? await supabase
+    .from('leases')
+    .select('unit_id')
+    .eq('tenant_id', tenant.id)
+    .order('end_date', { ascending: false })
+    .limit(1)
     .single() : { data: null }
 
-  const { data: leases } = tenant ? await supabase
+  const unitId = recentLease?.unit_id ?? null
+
+  const { data: unit } = unitId ? await supabase
+    .from('units')
+    .select('unit_number, property_id, properties(name, address, city, state, zip)')
+    .eq('id', unitId)
+    .single() : { data: null }
+
+  const { data: leases } = unitId ? await supabase
     .from('leases')
     .select('start_date, end_date, monthly_rent, document_url')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .order('end_date', { ascending: false })
     .limit(5) : { data: null }
 
-  const { data: documents } = tenant ? await supabase
+  const { data: documents } = unitId ? await supabase
     .from('documents')
     .select('id, name, url, created_at')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .order('created_at', { ascending: false }) : { data: null }
 
   const property = unit?.properties as any

@@ -12,14 +12,24 @@ export default async function PortalPaymentsPage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, unit_id')
+    .select('id')
     .eq('email', user.email)
     .single()
+
+  const { data: recentLease } = tenant ? await supabase
+    .from('leases')
+    .select('unit_id')
+    .eq('tenant_id', tenant.id)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .single() : { data: null }
+
+  const unitId = recentLease?.unit_id
 
   const { data: history } = await supabase
     .from('receivables')
     .select('date, description, amount, type, reference')
-    .eq('unit_id', tenant?.unit_id)
+    .eq('unit_id', unitId)
     .order('date', { ascending: false })
     .limit(50)
 

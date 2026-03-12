@@ -12,21 +12,31 @@ export default async function PortalMaintenancePage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, unit_id')
+    .select('id')
     .eq('email', user.email)
     .single()
+
+  const { data: recentLease } = tenant ? await supabase
+    .from('leases')
+    .select('unit_id')
+    .eq('tenant_id', tenant.id)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .single() : { data: null }
+
+  const unitId = recentLease?.unit_id
 
   const { data: openRequests } = await supabase
     .from('maintenance_requests')
     .select('id, title, description, status, priority, reported_date')
-    .eq('unit_id', tenant?.unit_id)
+    .eq('unit_id', unitId)
     .in('status', ['open', 'in_progress'])
     .order('reported_date', { ascending: false })
 
   const { data: closedRequests } = await supabase
     .from('maintenance_requests')
     .select('id, title, description, status, priority, reported_date, notes')
-    .eq('unit_id', tenant?.unit_id)
+    .eq('unit_id', unitId)
     .in('status', ['completed', 'cancelled'])
     .order('reported_date', { ascending: false })
     .limit(20)
@@ -35,7 +45,7 @@ export default async function PortalMaintenancePage() {
     <PortalMaintenanceContent
       openRequests={openRequests}
       closedRequests={closedRequests}
-      formSlot={tenant ? <MaintenanceRequestForm unitId={tenant.unit_id} tenantId={tenant.id} /> : null}
+      formSlot={tenant ? <MaintenanceRequestForm unitId={unitId} tenantId={tenant.id} /> : null}
     />
   )
 }

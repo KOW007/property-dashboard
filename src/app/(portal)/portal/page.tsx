@@ -11,7 +11,7 @@ export default async function PortalHomePage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, first_name, unit_id')
+    .select('id, first_name')
     .eq('email', user.email)
     .single()
 
@@ -23,18 +23,21 @@ export default async function PortalHomePage() {
     )
   }
 
+  // Get unit_id + lease info from most recent lease
   const { data: lease } = await supabase
     .from('leases')
-    .select('monthly_rent, end_date, start_date')
-    .eq('unit_id', tenant.unit_id)
+    .select('unit_id, monthly_rent, end_date, start_date')
+    .eq('tenant_id', tenant.id)
     .order('end_date', { ascending: false })
     .limit(1)
     .single()
 
+  const unitId = lease?.unit_id
+
   const { data: charges } = await supabase
     .from('receivables')
     .select('description, amount, date, type')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .eq('type', 'charge')
     .order('date', { ascending: true })
     .limit(10)
@@ -42,7 +45,7 @@ export default async function PortalHomePage() {
   const { data: openRequests } = await supabase
     .from('maintenance_requests')
     .select('id, title, status, reported_date')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .in('status', ['open', 'in_progress'])
     .order('reported_date', { ascending: false })
 

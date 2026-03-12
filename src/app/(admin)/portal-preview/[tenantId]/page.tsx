@@ -37,12 +37,22 @@ export default async function PortalPreviewPage({
 
   if (!tenant) notFound()
 
+  // Get unit_id from most recent lease
+  const { data: recentLease } = await supabase
+    .from('leases')
+    .select('unit_id')
+    .eq('tenant_id', tenant.id)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .single()
+  const unitId = recentLease?.unit_id ?? null
+
   // Get unit + property
-  const { data: unit } = await supabase
+  const { data: unit } = unitId ? await supabase
     .from('units')
     .select('unit_number, property_id, properties(name, address, city, state, zip, phone)')
-    .eq('id', tenant.unit_id)
-    .single()
+    .eq('id', unitId)
+    .single() : { data: null }
 
   const property = unit?.properties as any
   const propertyAddress = property
@@ -56,7 +66,7 @@ export default async function PortalPreviewPage({
   const { data: lease } = await supabase
     .from('leases')
     .select('monthly_rent, start_date, end_date')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .order('end_date', { ascending: false })
     .limit(1)
     .single()
@@ -64,7 +74,7 @@ export default async function PortalPreviewPage({
   const { data: charges } = await supabase
     .from('receivables')
     .select('description, amount, date, type')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .eq('type', 'charge')
     .order('date', { ascending: true })
     .limit(10)
@@ -72,7 +82,7 @@ export default async function PortalPreviewPage({
   const { data: openRequests } = await supabase
     .from('maintenance_requests')
     .select('id, title, description, status, priority, reported_date')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .in('status', ['open', 'in_progress'])
     .order('reported_date', { ascending: false })
 
@@ -80,7 +90,7 @@ export default async function PortalPreviewPage({
   const { data: paymentHistory } = await supabase
     .from('receivables')
     .select('date, description, amount, type, reference')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .order('date', { ascending: false })
     .limit(50)
 
@@ -88,7 +98,7 @@ export default async function PortalPreviewPage({
   const { data: closedRequests } = await supabase
     .from('maintenance_requests')
     .select('id, title, description, status, priority, reported_date, notes')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .in('status', ['completed', 'cancelled'])
     .order('reported_date', { ascending: false })
     .limit(20)
@@ -97,14 +107,14 @@ export default async function PortalPreviewPage({
   const { data: leases } = await supabase
     .from('leases')
     .select('start_date, end_date, monthly_rent, document_url')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .order('end_date', { ascending: false })
     .limit(5)
 
   const { data: documents } = await supabase
     .from('documents')
     .select('id, name, url, created_at')
-    .eq('unit_id', tenant.unit_id)
+    .eq('unit_id', unitId)
     .order('created_at', { ascending: false })
 
   return (

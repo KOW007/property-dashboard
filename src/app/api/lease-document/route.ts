@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Confirm this lease belongs to the logged-in tenant's unit
+  // Confirm this lease document belongs to the logged-in tenant
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('unit_id')
+    .select('id')
     .eq('email', user.email)
     .single()
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const { data: lease } = await supabase
     .from('leases')
     .select('id')
-    .eq('unit_id', tenant.unit_id)
+    .eq('tenant_id', tenant.id)
     .eq('document_url', filePath)
     .single()
 

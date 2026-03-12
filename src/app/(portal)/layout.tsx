@@ -15,15 +15,24 @@ export default async function PortalLayout({ children }: { children: React.React
   // Get tenant info by email
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('id, first_name, last_name, unit_id')
+    .select('id, first_name, last_name')
     .eq('email', user.email)
     .single()
 
+  // Get unit_id from most recent lease
+  const { data: recentLease } = tenant ? await supabase
+    .from('leases')
+    .select('unit_id')
+    .eq('tenant_id', tenant.id)
+    .order('end_date', { ascending: false })
+    .limit(1)
+    .single() : { data: null }
+
   // Get unit + property info
-  const { data: unit } = tenant ? await supabase
+  const { data: unit } = recentLease?.unit_id ? await supabase
     .from('units')
     .select('unit_number, property_id, properties(name, address, city, state, zip)')
-    .eq('id', tenant.unit_id)
+    .eq('id', recentLease.unit_id)
     .single() : { data: null }
 
   const property = unit?.properties as any

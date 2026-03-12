@@ -27,7 +27,7 @@ export default async function PortalPreviewListPage({ searchParams }: { searchPa
 
   const { data: tenants } = await supabase
     .from('tenants')
-    .select('id, first_name, last_name, email, unit_id, units(unit_number, properties(name))')
+    .select('id, first_name, last_name, email, leases(unit_id, units(unit_number, properties(name)))')
     .order('last_name')
 
   return (
@@ -50,7 +50,9 @@ export default async function PortalPreviewListPage({ searchParams }: { searchPa
           </thead>
           <tbody className="divide-y divide-gray-100">
             {tenants?.map((tenant) => {
-              const unit = tenant.units as any
+              const leases = tenant.leases as any[]
+              const latestLease = leases?.[leases.length - 1]
+              const unit = latestLease?.units as any
               const property = unit?.properties as any
               return (
                 <tr key={tenant.id} className="hover:bg-gray-50">

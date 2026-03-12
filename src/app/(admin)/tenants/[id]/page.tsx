@@ -33,8 +33,8 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
     .limit(1)
     .single()
 
-  // Fetch unit + property info (try tenant.unit_id first, fall back to lease.unit_id)
-  const unitId = tenant.unit_id || lease?.unit_id
+  // Fetch unit + property info via lease
+  const unitId = lease?.unit_id
   const { data: unit } = unitId ? await supabase
     .from('units')
     .select('unit_number, property_id, properties(name)')
