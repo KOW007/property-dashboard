@@ -128,6 +128,11 @@ export default async function PortalPreviewPage({
 
   return (
     <div>
+      {/* Temporary debug — remove once address is working */}
+      <pre className="bg-black text-green-400 text-xs p-3 rounded mb-4 overflow-x-auto">
+        {JSON.stringify({ rentRow, unitId, property, unit }, null, 2)}
+      </pre>
+
       {/* Admin Preview Banner */}
       <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2 text-amber-800 text-sm">
