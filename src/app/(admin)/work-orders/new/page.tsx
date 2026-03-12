@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
@@ -16,6 +16,12 @@ export default function NewWorkOrderPage() {
     estimated_cost: '',
     notes: '',
   })
+
+  const [permissionToEnter, setPermissionToEnter] = useState<boolean | null>(null)
+  const [photos, setPhotos] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
+  const [uploadProgress, setUploadProgress] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [properties, setProperties] = useState<any[]>([])
   const [units, setUnits] = useState<any[]>([])
@@ -79,9 +85,40 @@ export default function NewWorkOrderPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    const combined = [...photos, ...files].slice(0, 5)
+    setPhotos(combined)
+    setPreviews(combined.map(f => URL.createObjectURL(f)))
+    e.target.value = ''
+  }
+
+  const removePhoto = (index: number) => {
+    const next = photos.filter((_, i) => i !== index)
+    setPhotos(next)
+    setPreviews(next.map(f => URL.createObjectURL(f)))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+
+    // Upload photos
+    const photoUrls: string[] = []
+    for (let i = 0; i < photos.length; i++) {
+      const file = photos[i]
+      setUploadProgress(`Uploading photo ${i + 1} of ${photos.length}...`)
+      const ext = file.name.split('.').pop()
+      const path = `${formData.unit_id}/${Date.now()}-${i}.${ext}`
+      const { data, error } = await supabase.storage
+        .from('maintenance-photos')
+        .upload(path, file, { upsert: true })
+      if (!error && data) {
+        const { data: urlData } = supabase.storage.from('maintenance-photos').getPublicUrl(data.path)
+        photoUrls.push(urlData.publicUrl)
+      }
+    }
+    setUploadProgress('')
 
     try {
       const { error } = await supabase
@@ -96,6 +133,8 @@ export default function NewWorkOrderPage() {
           assigned_to: formData.assigned_to || null,
           estimated_cost: formData.estimated_cost ? Number(formData.estimated_cost) : null,
           notes: formData.notes || null,
+          permission_to_enter: permissionToEnter,
+          photo_urls: photoUrls.length > 0 ? photoUrls : null,
           reported_date: new Date().toISOString(),
         }])
 
@@ -280,6 +319,72 @@ export default function NewWorkOrderPage() {
             />
           </div>
 
+          {/* Permission to Enter */}
+          <div>
+            <p className="block text-sm font-medium text-gray-700 mb-2">Permission to Enter?</p>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={permissionToEnter === true}
+                  onChange={() => setPermissionToEnter(true)}
+                />
+                Yes, you may enter
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={permissionToEnter === false}
+                  onChange={() => setPermissionToEnter(false)}
+                />
+                No, please call to schedule first
+              </label>
+            </div>
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <p className="block text-sm font-medium text-gray-700 mb-2">Photos (optional, up to 5)</p>
+            {photos.length < 5 && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-sm px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-gray-600"
+              >
+                + Add Photo(s)
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+            {previews.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {previews.map((src, i) => (
+                  <div key={i} className="relative">
+                    <img
+                      src={src}
+                      alt={`Photo ${i + 1}`}
+                      className="w-20 h-20 object-cover rounded border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {uploadProgress && <p className="text-xs text-gray-500 mt-1">{uploadProgress}</p>}
+          </div>
+
           {/* Submit */}
           <div className="pt-4 border-t border-gray-200">
             <button
@@ -287,7 +392,7 @@ export default function NewWorkOrderPage() {
               disabled={submitting}
               className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-medium"
             >
-              {submitting ? 'Creating...' : 'Create Work Order'}
+              {submitting ? (uploadProgress || 'Creating...') : 'Create Work Order'}
             </button>
           </div>
         </form>
