@@ -687,16 +687,29 @@ export default function TenantApplicationForm() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Pets & Vehicles</h2>
             <div className="mb-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="has_pets"
-                  checked={formData.has_pets}
-                  onChange={handleChange}
-                  className="mr-2"
-                />
-                <span className="text-sm font-medium text-gray-700">I have pets</span>
-              </label>
+              <p className="text-sm font-medium text-gray-700 mb-2">Pets</p>
+              <div className="flex gap-4 mb-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="has_pets"
+                    checked={formData.has_pets === true}
+                    onChange={() => setFormData(prev => ({ ...prev, has_pets: true }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">I have pets</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="has_pets"
+                    checked={formData.has_pets === false}
+                    onChange={() => setFormData(prev => ({ ...prev, has_pets: false }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">I have no pets</span>
+                </label>
+              </div>
               {formData.has_pets && (
                 <textarea
                   name="pet_details"
