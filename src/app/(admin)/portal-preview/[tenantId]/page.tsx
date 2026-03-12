@@ -71,60 +71,60 @@ export default async function PortalPreviewPage({
 
   // --- Fetch data for all tabs upfront ---
 
-  // Home + shared
+  // Home + shared — use tenant_id for lease, unit_id for unit-based data
   const { data: lease } = await supabase
     .from('leases')
     .select('monthly_rent, start_date, end_date')
-    .eq('unit_id', unitId)
+    .eq('tenant_id', tenant.id)
     .order('end_date', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
-  const { data: charges } = await supabase
+  const { data: charges } = unitId ? await supabase
     .from('receivables')
     .select('description, amount, date, type')
     .eq('unit_id', unitId)
     .eq('type', 'charge')
     .order('date', { ascending: true })
-    .limit(10)
+    .limit(10) : { data: null }
 
-  const { data: openRequests } = await supabase
+  const { data: openRequests } = unitId ? await supabase
     .from('maintenance_requests')
     .select('id, title, description, status, priority, reported_date')
     .eq('unit_id', unitId)
     .in('status', ['open', 'in_progress'])
-    .order('reported_date', { ascending: false })
+    .order('reported_date', { ascending: false }) : { data: null }
 
   // Payments
-  const { data: paymentHistory } = await supabase
+  const { data: paymentHistory } = unitId ? await supabase
     .from('receivables')
     .select('date, description, amount, type, reference')
     .eq('unit_id', unitId)
     .order('date', { ascending: false })
-    .limit(50)
+    .limit(50) : { data: null }
 
   // Maintenance
-  const { data: closedRequests } = await supabase
+  const { data: closedRequests } = unitId ? await supabase
     .from('maintenance_requests')
     .select('id, title, description, status, priority, reported_date, notes')
     .eq('unit_id', unitId)
     .in('status', ['completed', 'cancelled'])
     .order('reported_date', { ascending: false })
-    .limit(20)
+    .limit(20) : { data: null }
 
-  // Property
+  // Property — leases by tenant_id, documents by unit_id
   const { data: leases } = await supabase
     .from('leases')
     .select('start_date, end_date, monthly_rent, document_url')
-    .eq('unit_id', unitId)
+    .eq('tenant_id', tenant.id)
     .order('end_date', { ascending: false })
     .limit(5)
 
-  const { data: documents } = await supabase
+  const { data: documents } = unitId ? await supabase
     .from('documents')
     .select('id, name, url, created_at')
     .eq('unit_id', unitId)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }) : { data: null }
 
   return (
     <div>
