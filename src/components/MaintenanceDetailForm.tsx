@@ -35,6 +35,7 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
     actual_cost: request.actual_cost ?? '',
     notes: request.notes ?? '',
     completed_date: request.completed_date ?? '',
+    description: request.description ?? '',
   })
   const [permissionToEnter, setPermissionToEnter] = useState<boolean | null>(request.permission_to_enter ?? null)
   const [existingPhotos, setExistingPhotos] = useState<string[]>(request.photo_urls ?? [])
@@ -96,6 +97,7 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
         assigned_to: form.assigned_to || null,
         estimated_cost: form.estimated_cost !== '' ? Number(form.estimated_cost) : null,
         actual_cost: form.actual_cost !== '' ? Number(form.actual_cost) : null,
+        description: form.description || null,
         notes: form.notes || null,
         completed_date: form.completed_date || null,
         permission_to_enter: permissionToEnter,
@@ -195,13 +197,6 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
         {/* Right: Details + Edit */}
         <div className="md:col-span-2 space-y-4">
 
-          {/* Description */}
-          {request.description && (
-            <div className="bg-white rounded-lg shadow p-4">
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</h2>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{request.description}</p>
-            </div>
-          )}
 
           {/* Photos */}
           <div className="bg-white rounded-lg shadow p-4">
@@ -248,6 +243,17 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
           {/* Editable fields */}
           <div className="bg-white rounded-lg shadow p-4 space-y-4">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Update Request</h2>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+              <textarea
+                rows={4}
+                value={form.description}
+                onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Describe the issue..."
+                className={inputClass}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
