@@ -164,7 +164,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
             <tbody className="bg-white divide-y divide-gray-200">
               {workOrders && workOrders.length > 0 ? (
                 workOrders.map((wo) => (
-                  <tr key={wo.id} className="hover:bg-gray-50">
+                  <tr key={wo.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/work-orders/${wo.id}`}>
                     <td className="px-6 py-4 text-sm">
                       <div className="font-medium text-gray-900">{wo.property_name}</div>
                       <div className="text-gray-500">Unit {wo.unit_number}</div>
