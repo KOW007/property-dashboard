@@ -46,10 +46,15 @@ export async function GET(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  const bucketMarker = '/lease-docs/'
+  const storagePath = filePath.includes(bucketMarker)
+    ? filePath.split(bucketMarker).slice(1).join(bucketMarker)
+    : filePath
+
   const { data, error } = await serviceSupabase
     .storage
     .from('lease-docs')
-    .createSignedUrl(filePath, 3600)
+    .createSignedUrl(storagePath, 3600)
 
   if (error || !data?.signedUrl) {
     return NextResponse.json({ error: 'Failed to generate signed URL' }, { status: 500 })

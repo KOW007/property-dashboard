@@ -47,14 +47,18 @@ export default async function PortalPreviewPage({
     .single()
   const unitId = recentLease?.unit_id ?? null
 
-  // Get unit + property
+  // Get unit, then property separately (avoids relying on FK join)
   const { data: unit } = unitId ? await supabase
     .from('units')
-    .select('unit_number, property_id, properties(name, address, city, state, zip, phone)')
+    .select('unit_number, property_id')
     .eq('id', unitId)
     .single() : { data: null }
 
-  const property = unit?.properties as any
+  const { data: property } = unit?.property_id ? await supabase
+    .from('properties')
+    .select('name, address, city, state, zip, phone')
+    .eq('id', unit.property_id)
+    .single() : { data: null }
   const propertyAddress = property
     ? `${property.address}, Unit ${unit?.unit_number}, ${property.city}, ${property.state} ${property.zip}`
     : ''

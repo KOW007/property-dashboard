@@ -27,8 +27,14 @@ export default async function PortalPropertyPage() {
 
   const { data: unit } = unitId ? await supabase
     .from('units')
-    .select('unit_number, property_id, properties(name, address, city, state, zip)')
+    .select('unit_number, property_id')
     .eq('id', unitId)
+    .single() : { data: null }
+
+  const { data: property } = unit?.property_id ? await supabase
+    .from('properties')
+    .select('name, address, city, state, zip')
+    .eq('id', unit.property_id)
     .single() : { data: null }
 
   const { data: leases } = unitId ? await supabase
@@ -43,8 +49,6 @@ export default async function PortalPropertyPage() {
     .select('id, name, url, created_at')
     .eq('unit_id', unitId)
     .order('created_at', { ascending: false }) : { data: null }
-
-  const property = unit?.properties as any
 
   return (
     <PortalPropertyContent
