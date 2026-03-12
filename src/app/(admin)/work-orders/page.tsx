@@ -164,7 +164,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
             <tbody className="bg-white divide-y divide-gray-200">
               {workOrders && workOrders.length > 0 ? (
                 workOrders.map((wo) => (
-                  <tr key={wo.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => window.location.href = `/work-orders/${wo.id}`}>
+                  <tr key={wo.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm">
                       <div className="font-medium text-gray-900">{wo.property_name}</div>
                       <div className="text-gray-500">Unit {wo.unit_number}</div>
@@ -173,7 +173,9 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                       {wo.tenant_name || '—'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                      <div className="font-medium">{wo.title}</div>
+                      <Link href={`/work-orders/${wo.id}`} className="font-medium text-[#b22625] hover:underline">
+                        {wo.title}
+                      </Link>
                       {wo.description && (
                         <div className="text-gray-500 truncate max-w-xs">{wo.description}</div>
                       )}
