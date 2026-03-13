@@ -35,10 +35,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </Link>
             ))}
             <Link
-              href="/dashboard"
+              href="/portal-login"
               className="ml-4 bg-[#b22625] hover:bg-[#8a1d1c] text-white px-4 py-2 rounded text-sm font-semibold uppercase tracking-wider transition-colors"
             >
-              Admin
+              Tenant Portal
             </Link>
           </nav>
         </div>
@@ -85,6 +85,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                     {link.label}
                   </Link>
                 ))}
+                <Link
+                  href="/dashboard"
+                  className="block text-sm text-white/70 hover:text-white transition-colors"
+                >
+                  Admin
+                </Link>
               </div>
             </div>
 
