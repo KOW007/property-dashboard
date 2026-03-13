@@ -105,6 +105,7 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
       })
       .eq('id', request.id)
 
+    setExistingPhotos(allPhotos)
     setNewPhotos([])
     setNewPreviews([])
     setSaving(false)
