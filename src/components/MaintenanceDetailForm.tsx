@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 const statusColors: Record<string, string> = {
   open: 'bg-red-100 text-[#8a1d1c]',
@@ -45,7 +44,6 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
 
   const inputClass = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#b22625]'
 
@@ -111,7 +109,6 @@ export default function MaintenanceDetailForm({ request, unit, property, tenant 
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
-    router.refresh()
   }
 
   return (
