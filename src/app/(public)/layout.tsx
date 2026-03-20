@@ -109,6 +109,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <div className="border-t border-white/10 mt-8 pt-6 text-center text-sm text-white/50">
             &copy; {new Date().getFullYear()} Spearhead Properties. All rights reserved.{' '}
             <Link href="/terms" className="hover:text-white/80 underline ml-2">Terms & Conditions</Link>
+            <Link href="/privacy" className="hover:text-white/80 underline ml-2">Privacy Policy</Link>
           </div>
         </div>
       </footer>
