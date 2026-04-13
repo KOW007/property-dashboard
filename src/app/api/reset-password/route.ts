@@ -26,8 +26,14 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
-    const resetUrl = data.properties?.action_link
-    if (!resetUrl) throw new Error('Failed to generate reset link')
+    const actionLink = data.properties?.action_link
+    if (!actionLink) throw new Error('Failed to generate reset link')
+
+    // Extract the token_hash from Supabase's URL and build our own branded link
+    const supabaseUrl = new URL(actionLink)
+    const tokenHash = supabaseUrl.searchParams.get('token')
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://property-dashboard-beige.vercel.app'
+    const resetUrl = `${siteUrl}/reset-password?token=${tokenHash}&type=recovery`
 
     // Send via Microsoft Graph so it comes from noreply@spearheadproperties.com
     await sendEmail({
