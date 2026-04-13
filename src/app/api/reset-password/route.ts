@@ -44,7 +44,7 @@ export async function POST(request: Request) {
           <div style="background:#2d2d2d;padding:20px 24px">
             <h1 style="color:#fff;margin:0;font-size:20px">Spearhead Properties</h1>
           </div>
-          <div style="padding:32px 24px;border:1px solid #eee;border-top:none">
+          <div style="padding:48px 24px 32px;border:1px solid #eee;border-top:none">
             <h2 style="color:#2d2d2d;margin-top:0">Reset your password</h2>
             <p style="color:#555;font-size:15px">
               We received a request to reset your password for your tenant portal account.
