@@ -123,7 +123,7 @@ export default function PortalLoginPage() {
 
             {resetSent ? (
               <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-4 rounded-lg text-sm text-center">
-                <p className="font-semibold mb-1">Check your inbox</p>
+                <p className="font-semibold mb-1">Check your inbox or junk mail</p>
                 <p>A password reset link has been sent to <strong>{resetEmail}</strong>.</p>
               </div>
             ) : (

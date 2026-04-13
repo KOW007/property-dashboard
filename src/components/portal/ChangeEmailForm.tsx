@@ -47,7 +47,7 @@ export default function ChangeEmailForm({ currentEmail }: { currentEmail: string
   if (sent) {
     return (
       <div className="mt-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-        Confirmation email sent to <strong>{newEmail}</strong>. Click the link in that email to confirm your new address.
+        Confirmation email sent to <strong>{newEmail}</strong>. Check your inbox or junk mail and click the link to confirm your new address.
       </div>
     )
   }
