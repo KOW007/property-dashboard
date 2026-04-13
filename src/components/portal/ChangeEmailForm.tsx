@@ -28,6 +28,14 @@ export default function ChangeEmailForm({ currentEmail }: { currentEmail: string
     try {
       const { error } = await supabase.auth.updateUser({ email: newEmail })
       if (error) throw error
+
+      // Notify the old address — fire and forget, don't block on it
+      fetch('/api/portal-notify-email-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newEmail }),
+      }).catch(() => {})
+
       setSent(true)
     } catch (err: any) {
       setError(err.message || 'Failed to send confirmation. Please try again.')
