@@ -1,3 +1,5 @@
+import ChangeEmailForm from './ChangeEmailForm'
+
 interface Tenant {
   id: string
   first_name: string
@@ -24,13 +26,11 @@ export default function PortalAccountContent({ tenant, userEmail, isPreview, for
         {/* Security Settings */}
         <div className="bg-white rounded-xl shadow-sm border-t-4 border-[#b22625] p-6">
           <h2 className="text-lg font-semibold text-gray-700 mb-4">Security Settings</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            To change your login email or password, please contact your property manager.
-          </p>
           <div className="space-y-2 text-sm">
             <div>
               <span className="font-medium text-gray-700">Email address</span>
-              <p className="text-gray-500">{userEmail}</p>
+              <p className="text-gray-500 mt-0.5">{userEmail}</p>
+              {!isPreview && <ChangeEmailForm currentEmail={userEmail} />}
             </div>
           </div>
         </div>

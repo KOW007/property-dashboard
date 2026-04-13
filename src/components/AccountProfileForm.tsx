@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation'
 export default function AccountProfileForm({ tenant }: { tenant: any }) {
   const [form, setForm] = useState({
     phone: tenant.phone || '',
-    email: tenant.email || '',
     vehicle_make: tenant.vehicle_make || '',
     vehicle_model: tenant.vehicle_model || '',
     vehicle_year: tenant.vehicle_year || '',
@@ -47,11 +46,6 @@ export default function AccountProfileForm({ tenant }: { tenant: any }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
             <input type="tel" name="phone" value={form.phone} onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#b22625]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-            <input type="email" name="email" value={form.email} onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#b22625]" />
           </div>
         </div>
