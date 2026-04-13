@@ -25,7 +25,7 @@ function isPortalRoute(pathname: string) {
   return portalRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

@@ -1,7 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
+  // Rate limit: max 5 applications per IP per hour
+  const ip = getClientIp((request as any).headers)
+  if (!rateLimit(ip, { limit: 5, windowMs: 60 * 60 * 1000 })) {
+    return NextResponse.json(
+      { error: 'Too many submissions. Please try again later.' },
+      { status: 429 }
+    )
+  }
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,12 +33,11 @@ export async function POST(request: Request) {
       })
     )
 
-    // Log cleaned data to find any remaining empty strings
-    const problematic = Object.entries(cleanedData).filter(([k, v]) => v === '')
+    // Verify no empty strings slipped through (dev check — no data logged)
+    const problematic = Object.entries(cleanedData).filter(([, v]) => v === '')
     if (problematic.length > 0) {
       console.error('Fields still empty strings after cleaning:', problematic.map(([k]) => k))
     }
-    console.log('Cleaned data:', JSON.stringify(cleanedData))
 
     // Insert main application
     const { data: application, error: appError } = await supabase
@@ -87,9 +96,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Error submitting application:', error)
+    console.error('Error submitting application:', error.code ?? error.message ?? 'unknown')
     return NextResponse.json(
-      { error: error.message || 'Failed to submit application' },
+      { error: 'Failed to submit application. Please try again.' },
       { status: 500 }
     )
   }

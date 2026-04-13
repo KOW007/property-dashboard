@@ -1,0 +1,271 @@
+/**
+ * POST /api/ach-cron
+ *
+ * Daily ACH rent collection cron — called by Vercel Cron (see vercel.json).
+ * Runs Mon–Fri at 6 AM CST (12:00 UTC).
+ *
+ * What it does:
+ *  1. Determine which payment_day values are due today (business day logic).
+ *  2. Load all active tenant bank info records for those payment days.
+ *  3. Load each tenant's current monthly rent from rent_roll.
+ *  4. Generate a NACHA PPD debit file.
+ *  5. Email the file as an attachment to the admin.
+ *  6. Log the batch in ach_batches for audit.
+ *
+ * Security: requires Authorization: Bearer <CRON_SECRET> header.
+ * Vercel automatically sends this header when CRON_SECRET env var is set.
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { generateNachaFile, type AchEntry, type NachaConfig } from '@/lib/nacha'
+import { sendEmail } from '@/lib/email'
+import { getPaymentDaysToProcess, nextBusinessDay } from '@/lib/business-days'
+
+// Use service role — bypasses RLS for server-side batch processing
+function getServiceSupabase() {
+  const url    = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !secret) throw new Error('Supabase service role not configured')
+  return createClient(url, secret, { auth: { persistSession: false } })
+}
+
+export async function POST(req: NextRequest) {
+  // ── 1. Auth check ───────────────────────────────────────────────────────────
+  const authHeader = req.headers.get('authorization') ?? ''
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── 2. Determine today's payment days ───────────────────────────────────────
+  // Treat "today" as CST (UTC-6 standard, UTC-5 daylight)
+  // Vercel runs in UTC; cron fires at 12:00 UTC = 06:00 CST / 07:00 CDT
+  const nowUtc = new Date()
+  // Approximate CST offset — safe for our purposes (cron fires at 06:00 CST)
+  const todayCst = new Date(nowUtc.getTime() - 6 * 60 * 60 * 1000)
+  todayCst.setUTCHours(0, 0, 0, 0)
+
+  const paymentDays = getPaymentDaysToProcess(todayCst)
+  const todayStr    = todayCst.toISOString().slice(0, 10)
+
+  if (paymentDays.length === 0) {
+    return NextResponse.json({ ok: true, message: 'No payments due today', date: todayStr })
+  }
+
+  const supabase = getServiceSupabase()
+
+  // ── 3. Check for duplicate run ──────────────────────────────────────────────
+  const { data: existing } = await supabase
+    .from('ach_batches')
+    .select('id, status')
+    .eq('run_date', todayStr)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({
+      ok: false,
+      message: `Batch for ${todayStr} already exists (status: ${existing.status})`,
+      batchId: existing.id,
+    })
+  }
+
+  // ── 4. Load tenant bank info for due payment days ───────────────────────────
+  const { data: bankRecords, error: bankErr } = await supabase
+    .from('tenant_bank_info')
+    .select(`
+      id,
+      tenant_id,
+      routing_number,
+      account_number,
+      account_type,
+      account_holder_name,
+      payment_day,
+      ach_authorized_at
+    `)
+    .eq('status', 'active')
+    .in('payment_day', paymentDays)
+    .not('ach_authorized_at', 'is', null)
+
+  if (bankErr) throw bankErr
+
+  if (!bankRecords || bankRecords.length === 0) {
+    return NextResponse.json({
+      ok: true,
+      message: 'No authorized bank records for today\'s payment days',
+      paymentDays,
+      date: todayStr,
+    })
+  }
+
+  // ── 5. Load rent amounts from rent_roll ─────────────────────────────────────
+  const tenantIds = bankRecords.map(r => r.tenant_id)
+
+  const { data: rentRows, error: rentErr } = await supabase
+    .from('rent_roll')
+    .select('tenant_id, monthly_rent, tenant_name')
+    .in('tenant_id', tenantIds)
+
+  if (rentErr) throw rentErr
+
+  const rentByTenant = new Map<string, { rent: number; name: string }>()
+  for (const row of rentRows ?? []) {
+    if (row.monthly_rent && row.monthly_rent > 0) {
+      rentByTenant.set(row.tenant_id, {
+        rent: Math.round(row.monthly_rent * 100), // dollars → cents
+        name: row.tenant_name ?? 'TENANT',
+      })
+    }
+  }
+
+  // ── 6. Build ACH entries ────────────────────────────────────────────────────
+  const entries: AchEntry[] = []
+  const skipped: string[] = []
+
+  for (const bank of bankRecords) {
+    const rentInfo = rentByTenant.get(bank.tenant_id)
+    if (!rentInfo) {
+      skipped.push(`${bank.tenant_id}: no rent amount`)
+      continue
+    }
+
+    // Validate routing number format
+    if (!/^\d{9}$/.test(bank.routing_number ?? '')) {
+      skipped.push(`${bank.tenant_id}: invalid routing number`)
+      continue
+    }
+
+    entries.push({
+      rdfiRoutingNumber: bank.routing_number,
+      rdfiAccountNumber: bank.account_number,
+      transactionCode:   bank.account_type === 'savings' ? '37' : '27',
+      amountCents:       rentInfo.rent,
+      individualId:      bank.tenant_id.slice(0, 15),
+      individualName:    (bank.account_holder_name ?? rentInfo.name).slice(0, 22),
+    })
+  }
+
+  if (entries.length === 0) {
+    return NextResponse.json({
+      ok: false,
+      message: 'No valid entries to include',
+      skipped,
+      paymentDays,
+      date: todayStr,
+    })
+  }
+
+  // ── 7. Generate NACHA file ──────────────────────────────────────────────────
+  const odfiBankRoutingNumber = process.env.ACH_ODFI_ROUTING
+  const odfiBankName          = process.env.ACH_ODFI_BANK_NAME   ?? 'YOUR BANK'
+  const companyName           = process.env.ACH_COMPANY_NAME     ?? 'SPEARHEAD PROP'
+  const companyId             = process.env.ACH_COMPANY_ID       ?? '0000000000'
+
+  if (!odfiBankRoutingNumber) {
+    throw new Error('ACH_ODFI_ROUTING env var not set')
+  }
+
+  // Effective date = next business day from today
+  const effectiveDate = nextBusinessDay(todayCst)
+
+  const config: NachaConfig = {
+    odfiBankRoutingNumber,
+    odfiBankName,
+    companyName,
+    companyId,
+    entryDescription: 'RENT',
+    effectiveDate,
+  }
+
+  const nacha = generateNachaFile(config, entries)
+
+  // ── 8. Save batch record (status: generated) ────────────────────────────────
+  const fileName = `rent_${todayStr.replace(/-/g, '')}.ach`
+
+  const { data: batch, error: batchErr } = await supabase
+    .from('ach_batches')
+    .insert([{
+      run_date:     todayStr,
+      payment_days: paymentDays,
+      entry_count:  nacha.entryCount,
+      total_cents:  nacha.totalDebitCents,
+      file_name:    fileName,
+      status:       'generated',
+    }])
+    .select('id')
+    .single()
+
+  if (batchErr) throw batchErr
+
+  // ── 9. Email the ACH file as an attachment ──────────────────────────────────
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL
+  if (!adminEmail) throw new Error('ADMIN_ALERT_EMAIL not configured')
+
+  const totalDollars = (nacha.totalDebitCents / 100).toLocaleString('en-US', {
+    style: 'currency', currency: 'USD',
+  })
+
+  const contentBase64 = Buffer.from(nacha.content, 'utf-8').toString('base64')
+
+  const html = `
+    <h2 style="color:#2d2d2d">Daily ACH Rent Collection — ${todayStr}</h2>
+    <p>The ACH file for today's rent collection has been generated.</p>
+    <table style="border-collapse:collapse;font-size:14px">
+      <tr><td style="padding:4px 12px 4px 0;color:#666">Run date</td><td><strong>${todayStr}</strong></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666">Entries</td><td><strong>${nacha.entryCount}</strong></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666">Total</td><td><strong>${totalDollars}</strong></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666">Effective date</td><td><strong>${effectiveDate.toISOString().slice(0, 10)}</strong></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666">File</td><td><strong>${fileName}</strong></td></tr>
+      ${skipped.length > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Skipped</td><td>${skipped.length} tenant(s)</td></tr>` : ''}
+    </table>
+    <p style="margin-top:16px;color:#666;font-size:12px">
+      Upload the attached .ach file to your bank portal to initiate the ACH batch.<br>
+      Batch ID: ${batch.id}
+    </p>
+    ${skipped.length > 0 ? `<p style="color:#b22625;font-size:12px"><strong>Skipped tenants:</strong><br>${skipped.join('<br>')}</p>` : ''}
+  `
+
+  try {
+    await sendEmail({
+      to:      adminEmail,
+      subject: `ACH Rent File — ${todayStr} — ${nacha.entryCount} entries — ${totalDollars}`,
+      html,
+      attachments: [{
+        name:          fileName,
+        contentType:   'application/octet-stream',
+        contentBase64,
+      }],
+    })
+
+    // Update batch status to 'sent'
+    await supabase
+      .from('ach_batches')
+      .update({ status: 'sent' })
+      .eq('id', batch.id)
+
+  } catch (emailErr: any) {
+    // Log the email failure but don't crash — file was generated
+    await supabase
+      .from('ach_batches')
+      .update({ status: 'failed', error_message: String(emailErr.message ?? emailErr) })
+      .eq('id', batch.id)
+
+    return NextResponse.json({
+      ok: false,
+      message: 'ACH file generated but email failed',
+      error: String(emailErr.message ?? emailErr),
+      batchId: batch.id,
+    }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    ok:          true,
+    date:        todayStr,
+    paymentDays,
+    entryCount:  nacha.entryCount,
+    totalCents:  nacha.totalDebitCents,
+    fileName,
+    batchId:     batch.id,
+    skipped,
+  })
+}

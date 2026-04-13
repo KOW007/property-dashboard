@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getPortalTenant } from '@/lib/portal-auth'
 import MaintenanceRequestForm from '@/components/MaintenanceRequestForm'
 import PortalMaintenanceContent from '@/components/portal/PortalMaintenanceContent'
 
@@ -10,11 +11,7 @@ export default async function PortalMaintenancePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/portal-login')
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('email', user.email)
-    .single()
+  const tenant = await getPortalTenant(supabase, user, 'id')
 
   const { data: recentLease } = tenant ? await supabase
     .from('leases')

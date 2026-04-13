@@ -8,6 +8,8 @@ const tabs = [
   { label: 'Bank Transfers', href: '/accounting/bank-transfers' },
   { label: 'GL Accounts', href: '/accounting/gl-accounts' },
   { label: 'Online Payments', href: '/accounting/online-payments' },
+  { label: 'ACH Export', href: '/accounting/ach-export' },
+  { label: 'ACH Transactions', href: '/accounting/ach-transactions' },
 ]
 
 export default function AccountingLayout({ children }: { children: React.ReactNode }) {

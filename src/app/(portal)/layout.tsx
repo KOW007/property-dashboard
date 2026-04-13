@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { getPortalTenant } from '@/lib/portal-auth'
 import PortalNav from '@/components/PortalNav'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -12,12 +13,8 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect('/portal-login')
   }
 
-  // Get tenant info by email
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id, first_name, last_name')
-    .eq('email', user.email)
-    .single()
+  // Secure lookup — prefers auth_user_id, falls back to email, auto-populates on first login
+  const tenant = await getPortalTenant(supabase, user, 'id, first_name, last_name')
 
   // Use rent_roll — already has address/unit info joined correctly
   const { data: rentRow } = tenant ? await supabase

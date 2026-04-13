@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import PortalHomeContent from '@/components/portal/PortalHomeContent'
 import PortalPaymentsContent from '@/components/portal/PortalPaymentsContent'
 import PortalMaintenanceContent from '@/components/portal/PortalMaintenanceContent'
@@ -22,6 +23,14 @@ export default async function PortalPreviewPage({
   const { tenantId } = await params
   const { tab } = await searchParams
   const activeTab = tab || 'Home'
+
+  // Verify admin is authenticated — defence-in-depth beyond middleware
+  const authClient = await createSupabaseServer()
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user) redirect('/login')
+
+  // Validate tenantId is a UUID to prevent injection
+  if (!/^[0-9a-f-]{36}$/i.test(tenantId)) notFound()
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

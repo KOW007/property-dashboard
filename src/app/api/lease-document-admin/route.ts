@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
     ? filePath.split(bucketMarker).slice(1).join(bucketMarker)
     : filePath
 
+  // Prevent path traversal — only allow safe filename characters and .pdf extension
+  if (!/^[\w\-./]+\.pdf$/i.test(storagePath) || storagePath.includes('..')) {
+    return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })
+  }
+
   const { data, error } = await serviceSupabase
     .storage
     .from('lease-docs')

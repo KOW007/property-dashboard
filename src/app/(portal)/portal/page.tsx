@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getPortalTenant } from '@/lib/portal-auth'
 import PortalHomeContent from '@/components/portal/PortalHomeContent'
 
 export const dynamic = 'force-dynamic'
@@ -9,11 +10,7 @@ export default async function PortalHomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/portal-login')
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id, first_name')
-    .eq('email', user.email)
-    .single()
+  const tenant = await getPortalTenant(supabase, user, 'id, first_name')
 
   if (!tenant) {
     return (

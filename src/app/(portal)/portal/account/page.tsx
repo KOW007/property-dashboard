@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getPortalTenant } from '@/lib/portal-auth'
 import AccountProfileForm from '@/components/AccountProfileForm'
 import PortalAccountContent from '@/components/portal/PortalAccountContent'
 
@@ -10,11 +11,7 @@ export default async function PortalAccountPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/portal-login')
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('*')
-    .eq('email', user.email)
-    .single()
+  const tenant = await getPortalTenant(supabase, user, '*') as any
 
   return (
     <PortalAccountContent

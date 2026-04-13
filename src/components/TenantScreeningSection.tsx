@@ -67,6 +67,12 @@ export default function TenantScreeningSection(props: Props) {
     return ssn
   }
 
+  const maskDL = (dl: string | null) => {
+    if (!dl) return '—'
+    if (dl.length > 3) return '•'.repeat(dl.length - 3) + dl.slice(-3)
+    return dl
+  }
+
   if (editing) {
     return (
       <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -141,7 +147,7 @@ export default function TenantScreeningSection(props: Props) {
         </div>
         <div>
           <p className="text-gray-500">Drivers License</p>
-          <p className="text-gray-900 font-medium mt-1">{props.drivers_license || '—'}</p>
+          <p className="text-gray-900 font-medium mt-1">{maskDL(props.drivers_license)}</p>
         </div>
         <div>
           <p className="text-gray-500">State</p>

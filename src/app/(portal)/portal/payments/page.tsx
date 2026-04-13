@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getPortalTenant } from '@/lib/portal-auth'
 import BankInfoForm from '@/components/BankInfoForm'
 import PortalPaymentsContent from '@/components/portal/PortalPaymentsContent'
 
@@ -10,11 +11,7 @@ export default async function PortalPaymentsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/portal-login')
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('email', user.email)
-    .single()
+  const tenant = await getPortalTenant(supabase, user, 'id')
 
   const { data: recentLease } = tenant ? await supabase
     .from('leases')

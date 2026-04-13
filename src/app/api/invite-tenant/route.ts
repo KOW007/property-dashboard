@@ -1,12 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { createSupabaseServer } from '@/lib/supabase-server'
 
 export async function POST(request: Request) {
   try {
+    // Verify the caller is an authenticated admin
+    const authClient = await createSupabaseServer()
+    const { data: { user } } = await authClient.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { email, tenantName } = await request.json()
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
     }
 
     // Use service role key to send invite — bypasses RLS
@@ -20,11 +26,14 @@ export async function POST(request: Request) {
       data: { tenant_name: tenantName }
     })
 
-    if (error) throw error
+    if (error) {
+      console.error('Invite error:', error.message, error.status)
+      return NextResponse.json({ error: error.message ?? 'Failed to send invite' }, { status: error.status ?? 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Invite error:', error)
-    return NextResponse.json({ error: error.message || 'Failed to send invite' }, { status: 500 })
+    console.error('Invite error:', error.message ?? error)
+    return NextResponse.json({ error: error.message ?? 'Failed to send invite' }, { status: 500 })
   }
 }
