@@ -20,23 +20,48 @@ const AUTHORIZATION_TEXT =
   'for the monthly rent amount due, on or around the payment day I select each month. ' +
   'I understand this authorization will remain in effect until I revoke it in writing.'
 
+function maskAccount(acct?: string) {
+  if (!acct) return '—'
+  return '••••' + acct.slice(-4)
+}
+
+function maskRouting(routing?: string) {
+  if (!routing) return '—'
+  return '•••••' + routing.slice(-4)
+}
+
 export default function BankInfoForm({ tenantId, existing }: { tenantId: string, existing?: BankInfo | null }) {
-  const [form, setForm] = useState({
-    bank_name:            existing?.bank_name || '',
-    account_holder_name:  existing?.account_holder_name || '',
-    routing_number:       existing?.routing_number || '',
-    account_number:       existing?.account_number || '',
-    account_type:         existing?.account_type || 'checking',
-    payment_day:          existing?.payment_day?.toString() || '1',
+  const [editing, setEditing]   = useState(!existing)
+  const [form, setForm]         = useState({
+    bank_name:           existing?.bank_name || '',
+    account_holder_name: existing?.account_holder_name || '',
+    routing_number:      existing?.routing_number || '',
+    account_number:      existing?.account_number || '',
+    account_type:        existing?.account_type || 'checking',
+    payment_day:         existing?.payment_day?.toString() || '1',
   })
   const [authorized, setAuthorized] = useState(!!existing?.ach_authorized_at)
   const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  const handleCancel = () => {
+    // Reset form back to existing values
+    setForm({
+      bank_name:           existing?.bank_name || '',
+      account_holder_name: existing?.account_holder_name || '',
+      routing_number:      existing?.routing_number || '',
+      account_number:      existing?.account_number || '',
+      account_type:        existing?.account_type || 'checking',
+      payment_day:         existing?.payment_day?.toString() || '1',
+    })
+    setAuthorized(!!existing?.ach_authorized_at)
+    setError(null)
+    setEditing(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,7 +74,6 @@ export default function BankInfoForm({ tenantId, existing }: { tenantId: string,
     }
 
     setSaving(true)
-    setSaved(false)
 
     try {
       const res = await fetch('/api/portal-bank-info', {
@@ -68,7 +92,7 @@ export default function BankInfoForm({ tenantId, existing }: { tenantId: string,
         throw new Error(data.error || 'Failed to save bank info')
       }
 
-      setSaved(true)
+      setEditing(false)
       router.refresh()
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.')
@@ -77,13 +101,61 @@ export default function BankInfoForm({ tenantId, existing }: { tenantId: string,
     }
   }
 
+  // ── Read view ───────────────────────────────────────────────────────────────
+  if (!editing && existing) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            Auto-pay is active. Your account will be debited on day {existing.payment_day} of each month.
+          </p>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-[#b22625] hover:underline font-medium ml-4 shrink-0"
+          >
+            Edit
+          </button>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+          <div>
+            <dt className="text-gray-500">Bank Name</dt>
+            <dd className="text-gray-900 font-medium mt-0.5">{existing.bank_name || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">Account Holder</dt>
+            <dd className="text-gray-900 font-medium mt-0.5">{existing.account_holder_name || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">Routing Number</dt>
+            <dd className="text-gray-900 font-medium mt-0.5 font-mono">{maskRouting(existing.routing_number)}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">Account Number</dt>
+            <dd className="text-gray-900 font-medium mt-0.5 font-mono">{maskAccount(existing.account_number)}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">Account Type</dt>
+            <dd className="text-gray-900 font-medium mt-0.5 capitalize">{existing.account_type || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">Payment Day</dt>
+            <dd className="text-gray-900 font-medium mt-0.5">Day {existing.payment_day} of each month</dd>
+          </div>
+        </dl>
+
+        {existing.ach_authorized_at && (
+          <p className="text-xs text-gray-400 pt-1">
+            Authorized {new Date(existing.ach_authorized_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  // ── Edit / setup form ───────────────────────────────────────────────────────
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {saved && (
-        <div className="bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-3 text-sm">
-          Bank information saved successfully.
-        </div>
-      )}
       {error && (
         <div className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-3 text-sm">
           {error}
@@ -152,10 +224,18 @@ export default function BankInfoForm({ tenantId, existing }: { tenantId: string,
         </label>
       </div>
 
-      <button type="submit" disabled={saving || !authorized}
-        className="w-full bg-[#2d2d2d] text-white py-2.5 rounded-lg hover:bg-black disabled:bg-gray-400 font-medium text-sm transition-colors">
-        {saving ? 'Saving...' : existing ? 'Update Bank Info' : 'Save Bank Info'}
-      </button>
+      <div className="flex gap-3">
+        <button type="submit" disabled={saving || !authorized}
+          className="bg-[#2d2d2d] text-white px-6 py-2.5 rounded-lg hover:bg-black disabled:bg-gray-400 font-medium text-sm transition-colors">
+          {saving ? 'Saving...' : existing ? 'Update Bank Info' : 'Save Bank Info'}
+        </button>
+        {existing && (
+          <button type="button" onClick={handleCancel}
+            className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-200 font-medium text-sm transition-colors">
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   )
 }
