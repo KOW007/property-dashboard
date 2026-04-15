@@ -50,6 +50,15 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
     .select('id, unit_number, property_id, properties(name)')
     .order('unit_number')
 
+  // Fetch units that currently have an active lease (excluding this tenant's own lease)
+  const today_iso = new Date().toISOString().split('T')[0]
+  const { data: activeLeases } = await supabase
+    .from('leases')
+    .select('unit_id')
+    .gte('end_date', today_iso)
+    .neq('id', lease?.id ?? '')
+  const occupiedUnitIds = (activeLeases ?? []).map(l => l.unit_id).filter(Boolean) as string[]
+
   // Fetch payment history
   const { data: payments } = await supabase
     .from('payments')
@@ -153,6 +162,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           leaseId={lease?.id ?? null}
           unitId={unitId ?? null}
           allUnits={(allUnits ?? []).map(u => ({ id: u.id, unit_number: u.unit_number, property_name: (u.properties as any)?.name ?? '' }))}
+          occupiedUnitIds={occupiedUnitIds}
           monthly_rent={lease?.monthly_rent ?? null}
           security_deposit={lease?.security_deposit ?? null}
           start_date={lease?.start_date ?? null}

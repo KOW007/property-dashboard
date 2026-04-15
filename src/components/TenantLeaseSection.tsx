@@ -13,6 +13,7 @@ interface Props {
   leaseId: string | null
   unitId: string | null
   allUnits: UnitOption[]
+  occupiedUnitIds: string[]
   monthly_rent: number | null
   security_deposit: number | null
   start_date: string | null
@@ -64,6 +65,17 @@ export default function TenantLeaseSection(props: Props) {
 
   const handleSave = async () => {
     if (!props.leaseId) return
+
+    // Warn if the selected unit is already occupied by another tenant
+    if (data.unit_id && data.unit_id !== props.unitId && props.occupiedUnitIds.includes(data.unit_id)) {
+      const selected = props.allUnits.find(u => u.id === data.unit_id)
+      const label = selected ? `Unit ${selected.unit_number}` : 'this unit'
+      const confirmed = window.confirm(
+        `There is already a current tenant in ${label}. Are you sure you want to assign this tenant to the same unit?`
+      )
+      if (!confirmed) return
+    }
+
     setSaving(true)
     try {
       const { error } = await supabase
