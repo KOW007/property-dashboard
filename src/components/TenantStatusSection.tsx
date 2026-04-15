@@ -11,6 +11,9 @@ interface Props {
   notice_date: string | null
   move_out_reason: string | null
   send_rent_reminders: boolean | null
+  unitId: string | null
+  unitNumber: string | null
+  currentTenantUnitIds: string[]
 }
 
 const fmt = (val: string | null | undefined) => {
@@ -40,6 +43,19 @@ export default function TenantStatusSection(props: Props) {
   }
 
   const handleSave = async () => {
+    // Warn if activating a tenant whose unit already has a Current tenant
+    if (
+      data.status === 'Current' &&
+      props.status !== 'Current' &&
+      props.unitId &&
+      props.currentTenantUnitIds.includes(props.unitId)
+    ) {
+      const confirmed = window.confirm(
+        `There is already a current tenant in Unit ${props.unitNumber ?? props.unitId}. Are you sure you want to set this tenant to Current?`
+      )
+      if (!confirmed) return
+    }
+
     setSaving(true)
     try {
       const { error } = await supabase

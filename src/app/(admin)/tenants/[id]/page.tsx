@@ -59,6 +59,18 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
     .neq('id', lease?.id ?? '')
   const occupiedUnitIds = (activeLeases ?? []).map(l => l.unit_id).filter(Boolean) as string[]
 
+  // Fetch unit IDs that have another tenant with status 'Current' (for status change warning)
+  const { data: currentTenants } = await supabase
+    .from('tenants')
+    .select('id')
+    .eq('status', 'Current')
+    .neq('id', id)
+  const currentTenantIds = (currentTenants ?? []).map(t => t.id)
+  const { data: currentTenantLeases } = currentTenantIds.length > 0
+    ? await supabase.from('leases').select('unit_id').in('tenant_id', currentTenantIds)
+    : { data: [] }
+  const currentTenantUnitIds = (currentTenantLeases ?? []).map(l => l.unit_id).filter(Boolean) as string[]
+
   // Fetch payment history
   const { data: payments } = await supabase
     .from('payments')
@@ -204,6 +216,9 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         notice_date={tenant.notice_date}
         move_out_reason={tenant.move_out_reason}
         send_rent_reminders={tenant.send_rent_reminders}
+        unitId={unitId ?? null}
+        unitNumber={unit_number ?? null}
+        currentTenantUnitIds={currentTenantUnitIds}
       />
 
       {/* Insurance - commented out for now
