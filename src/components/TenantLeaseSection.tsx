@@ -3,8 +3,16 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+interface UnitOption {
+  id: string
+  unit_number: string | null
+  property_name: string
+}
+
 interface Props {
   leaseId: string | null
+  unitId: string | null
+  allUnits: UnitOption[]
   monthly_rent: number | null
   security_deposit: number | null
   start_date: string | null
@@ -36,6 +44,7 @@ export default function TenantLeaseSection(props: Props) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState({
+    unit_id: props.unitId || '',
     monthly_rent: props.monthly_rent?.toString() || '',
     security_deposit: props.security_deposit?.toString() || '',
     start_date: props.start_date || '',
@@ -60,6 +69,7 @@ export default function TenantLeaseSection(props: Props) {
       const { error } = await supabase
         .from('leases')
         .update({
+          unit_id: data.unit_id || null,
           monthly_rent: data.monthly_rent ? parseFloat(data.monthly_rent) : null,
           security_deposit: data.security_deposit ? parseFloat(data.security_deposit) : null,
           start_date: data.start_date || null,
@@ -99,6 +109,18 @@ export default function TenantLeaseSection(props: Props) {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Lease Details</h2>
         </div>
         <div className="space-y-3 text-sm">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Unit</label>
+            <select name="unit_id" value={data.unit_id} onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="">— No unit —</option>
+              {props.allUnits.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.property_name} - Unit {u.unit_number}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Lease Status</label>
             <select name="lease_status" value={data.lease_status} onChange={handleChange}
@@ -180,6 +202,16 @@ export default function TenantLeaseSection(props: Props) {
         </button>
       </div>
       <dl className="space-y-3 text-sm">
+        {props.unitId && (
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Unit</dt>
+            <dd className="text-gray-900 font-medium">
+              {props.allUnits.find(u => u.id === props.unitId)
+                ? `${props.allUnits.find(u => u.id === props.unitId)!.property_name} - Unit ${props.allUnits.find(u => u.id === props.unitId)!.unit_number}`
+                : '—'}
+            </dd>
+          </div>
+        )}
         {props.lease_status && (
           <div className="flex justify-between">
             <dt className="text-gray-500">Lease Status</dt>
