@@ -2,6 +2,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import InviteTenantButton from '@/components/InviteTenantButton'
+import UnitEditButton from '@/components/UnitEditButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,11 +47,20 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
     .select('id, name, address, city, state, zip')
   const propertyMap = new Map(allPropertyData?.map(p => [p.id, p]))
 
+  // Lookup map: "PropertyName|unit_number" -> unit row (for finding unit IDs in the rent_roll view)
+  const unitLookup = new Map(
+    (allUnitData ?? []).map(u => {
+      const prop = propertyMap.get(u.property_id)
+      return [`${prop?.name}|${u.unit_number}`, u]
+    })
+  )
+
   let vacantRows = (allUnitData ?? [])
     .filter(u => !activeUnitIds.has(u.id))
     .map(u => {
       const prop = propertyMap.get(u.property_id)
       return {
+        unit_id: u.id,
         property_name: prop?.name ?? 'Unknown',
         address: prop?.address ?? null,
         city: prop?.city ?? null,
@@ -205,7 +215,13 @@ export default async function RentRollPage({ searchParams }: { searchParams: Pro
                     {/* Data Rows */}
                     {propRows.map((row, i) => (
                       <tr key={row.lease_id || i} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-[#b22625] font-medium">{row.unit_number}</td>
+                        <td className="px-3 py-2">
+                          {unitLookup.has(`${propertyName}|${row.unit_number}`) ? (
+                            <UnitEditButton unit={unitLookup.get(`${propertyName}|${row.unit_number}`)!} />
+                          ) : (
+                            <span className="text-[#b22625] font-medium">{row.unit_number}</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-gray-500">
                           {row.bedrooms != null ? `${Math.round(row.bedrooms)}/${Math.round(row.bathrooms || 0)}` : '—'}
                         </td>
