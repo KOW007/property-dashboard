@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 
 interface Props {
   tenantId: string
+  first_name: string | null
+  last_name: string | null
   email: string | null
   phone: string | null
   license_plates: string | null
@@ -16,6 +18,8 @@ export default function TenantContactSection(props: Props) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState({
+    first_name: props.first_name || '',
+    last_name: props.last_name || '',
     email: props.email || '',
     phone: props.phone || '',
     license_plates: props.license_plates || '',
@@ -37,6 +41,8 @@ export default function TenantContactSection(props: Props) {
       const { error } = await supabase
         .from('tenants')
         .update({
+          first_name: data.first_name || null,
+          last_name: data.last_name || null,
           email: data.email || null,
           phone: data.phone || null,
           license_plates: data.license_plates || null,
@@ -62,6 +68,18 @@ export default function TenantContactSection(props: Props) {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Contact Information</h2>
         </div>
         <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">First Name</label>
+              <input type="text" name="first_name" value={data.first_name} onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Last Name</label>
+              <input type="text" name="last_name" value={data.last_name} onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
             <input type="email" name="email" value={data.email} onChange={handleChange}
@@ -112,6 +130,10 @@ export default function TenantContactSection(props: Props) {
         </button>
       </div>
       <dl className="space-y-3 text-sm">
+        <div className="flex justify-between">
+          <dt className="text-gray-500">Name</dt>
+          <dd className="text-gray-900 font-medium">{[props.first_name, props.last_name].filter(Boolean).join(' ') || '—'}</dd>
+        </div>
         <div className="flex justify-between">
           <dt className="text-gray-500">Email</dt>
           <dd className="text-gray-900 font-medium">{props.email || '—'}</dd>

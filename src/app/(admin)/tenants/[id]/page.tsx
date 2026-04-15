@@ -162,6 +162,8 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         {/* Contact Info */}
         <TenantContactSection
           tenantId={id}
+          first_name={tenant.first_name}
+          last_name={tenant.last_name}
           email={tenant.email}
           phone={tenant.phone}
           license_plates={tenant.license_plates}
