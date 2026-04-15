@@ -175,6 +175,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           unitId={unitId ?? null}
           allUnits={(allUnits ?? []).map(u => ({ id: u.id, unit_number: u.unit_number, property_name: (u.properties as any)?.name ?? '' }))}
           occupiedUnitIds={occupiedUnitIds}
+          tenantStatus={tenant.status}
           monthly_rent={lease?.monthly_rent ?? null}
           security_deposit={lease?.security_deposit ?? null}
           start_date={lease?.start_date ?? null}

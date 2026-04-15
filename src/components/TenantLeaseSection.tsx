@@ -14,6 +14,7 @@ interface Props {
   unitId: string | null
   allUnits: UnitOption[]
   occupiedUnitIds: string[]
+  tenantStatus: string | null
   monthly_rent: number | null
   security_deposit: number | null
   start_date: string | null
@@ -126,11 +127,17 @@ export default function TenantLeaseSection(props: Props) {
             <select name="unit_id" value={data.unit_id} onChange={handleChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="">— No unit —</option>
-              {props.allUnits.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.property_name} - Unit {u.unit_number}
-                </option>
-              ))}
+              {props.allUnits
+                .filter(u =>
+                  props.tenantStatus !== 'Future' ||
+                  !props.occupiedUnitIds.includes(u.id) ||
+                  u.id === props.unitId  // always include the currently assigned unit
+                )
+                .map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.property_name} - Unit {u.unit_number}
+                  </option>
+                ))}
             </select>
           </div>
           <div>
