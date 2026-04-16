@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X } from 'lucide-react'
 
 interface AchTransaction {
   id: string
@@ -25,6 +25,29 @@ type Filter = 'all' | 'ach.settlement' | 'ach.return' | 'ach.noc'
 
 const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
+interface PreviewEntry {
+  name: string
+  amount: string
+  routing: string
+  account: string
+  type: string
+}
+
+interface PreviewResult {
+  ok: boolean
+  message?: string
+  date: string
+  effectiveDate: string
+  paymentDays: number[]
+  entryCount?: number
+  totalCents?: number
+  fileName: string
+  fileContent: string | null
+  entries: PreviewEntry[]
+  skipped: string[]
+  deferred: string[]
+}
+
 export default function AchTransactionsClient({
   transactions,
 }: {
@@ -32,6 +55,33 @@ export default function AchTransactionsClient({
 }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [preview, setPreview] = useState<PreviewResult | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [showRaw, setShowRaw] = useState(false)
+
+  const loadPreview = async () => {
+    setPreviewLoading(true)
+    try {
+      const res = await fetch('/api/ach-preview')
+      const data = await res.json()
+      setPreview(data)
+    } catch {
+      alert('Failed to load preview')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const downloadFile = () => {
+    if (!preview?.fileContent || !preview?.fileName) return
+    const blob = new Blob([preview.fileContent], { type: 'application/octet-stream' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = preview.fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const filtered = transactions.filter(
     t => filter === 'all' || t.event_type === filter
@@ -53,7 +103,142 @@ export default function AchTransactionsClient({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-gray-900">ACH Transactions</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold text-gray-900">ACH Transactions</h2>
+        <button
+          onClick={loadPreview}
+          disabled={previewLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-[#2d2d2d] text-white rounded-lg text-sm font-medium hover:bg-black disabled:bg-gray-400"
+        >
+          <FileText className="w-4 h-4" />
+          {previewLoading ? 'Loading...' : "Preview Tomorrow's File"}
+        </button>
+      </div>
+
+      {/* ── Preview Modal ──────────────────────────────────────────────── */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-8 px-4"
+          onClick={e => { if (e.target === e.currentTarget) setPreview(null) }}
+        >
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">ACH File Preview</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Run date: {preview.date} &nbsp;·&nbsp; Effective date: <span className="font-medium text-gray-800">{preview.effectiveDate}</span>
+                </p>
+              </div>
+              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* No entries */}
+              {!preview.fileContent ? (
+                <p className="text-gray-500 text-sm">{preview.message ?? 'No entries to include in this file.'}</p>
+              ) : (
+                <>
+                  {/* Summary */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <p className="text-xs text-gray-500 mb-1">Entries</p>
+                      <p className="text-2xl font-bold text-gray-900">{preview.entryCount}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <p className="text-xs text-gray-500 mb-1">Total</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {preview.totalCents != null
+                          ? (preview.totalCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+                          : '—'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 text-center">
+                      <p className="text-xs text-gray-500 mb-1">File</p>
+                      <p className="text-sm font-mono font-medium text-gray-900 mt-1 truncate">{preview.fileName}</p>
+                    </div>
+                  </div>
+
+                  {/* Entry table */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Entries</h4>
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="min-w-full text-sm divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {preview.entries.map((e, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 font-medium text-gray-900">{e.name}</td>
+                              <td className="px-4 py-2 text-right text-gray-900">${e.amount}</td>
+                              <td className="px-4 py-2 font-mono text-gray-600">{e.account}</td>
+                              <td className="px-4 py-2 text-gray-600 capitalize">{e.type}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Deferred / Skipped */}
+                  {(preview.deferred.length > 0 || preview.skipped.length > 0) && (
+                    <div className="space-y-2">
+                      {preview.deferred.length > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                          <span className="font-semibold">{preview.deferred.length} deferred</span> — bank info changed after 2pm CST, will run tomorrow.
+                        </div>
+                      )}
+                      {preview.skipped.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-800">
+                          <span className="font-semibold">{preview.skipped.length} skipped</span> — missing rent amount or invalid routing.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Raw file toggle */}
+                  <div>
+                    <button
+                      onClick={() => setShowRaw(r => !r)}
+                      className="text-sm text-[#b22625] hover:underline font-medium"
+                    >
+                      {showRaw ? 'Hide raw file' : 'Show raw NACHA file'}
+                    </button>
+                    {showRaw && (
+                      <pre className="mt-3 bg-gray-900 text-green-400 text-xs font-mono rounded-lg p-4 overflow-x-auto whitespace-pre leading-5">
+                        {preview.fileContent}
+                      </pre>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button onClick={() => setPreview(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                Close
+              </button>
+              {preview.fileContent && (
+                <button onClick={downloadFile}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#2d2d2d] text-white rounded-lg text-sm font-medium hover:bg-black">
+                  <Download className="w-4 h-4" />
+                  Download .ach
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Summary Cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
