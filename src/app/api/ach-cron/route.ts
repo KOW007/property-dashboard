@@ -2,15 +2,19 @@
  * POST /api/ach-cron
  *
  * Daily ACH rent collection cron — called by Vercel Cron (see vercel.json).
- * Runs Mon–Fri at 6 AM CST (12:00 UTC).
+ * Runs Mon–Fri at 2:00 PM CST (20:00 UTC standard / 19:00 UTC daylight).
+ *
+ * Cutoff rule: any tenant_bank_info record with updated_at >= 2:00 PM CST today
+ * is skipped and will be picked up by tomorrow's run (next business day).
  *
  * What it does:
  *  1. Determine which payment_day values are due today (business day logic).
  *  2. Load all active tenant bank info records for those payment days.
- *  3. Load each tenant's current monthly rent from rent_roll.
- *  4. Generate a NACHA PPD debit file.
- *  5. Email the file as an attachment to the admin.
- *  6. Log the batch in ach_batches for audit.
+ *  3. Skip records changed at or after the 2pm CST cutoff (deferred to tomorrow).
+ *  4. Load each tenant's current monthly rent from rent_roll.
+ *  5. Generate a NACHA PPD debit file.
+ *  6. Email the file as an attachment to the admin.
+ *  7. Log the batch in ach_batches for audit.
  *
  * Security: requires Authorization: Bearer <CRON_SECRET> header.
  * Vercel automatically sends this header when CRON_SECRET env var is set.
@@ -39,12 +43,18 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Determine today's payment days ───────────────────────────────────────
-  // Treat "today" as CST (UTC-6 standard, UTC-5 daylight)
-  // Vercel runs in UTC; cron fires at 12:00 UTC = 06:00 CST / 07:00 CDT
+  // Treat "today" as CST (UTC-6 standard, UTC-5 daylight).
+  // Vercel runs in UTC; cron fires at 20:00 UTC = 14:00 CST / 15:00 CDT.
+  // We use CST (UTC-6) as the fixed offset — Austin, TX standard time.
   const nowUtc = new Date()
-  // Approximate CST offset — safe for our purposes (cron fires at 06:00 CST)
-  const todayCst = new Date(nowUtc.getTime() - 6 * 60 * 60 * 1000)
+  const CST_OFFSET_MS = 6 * 60 * 60 * 1000
+  const todayCst = new Date(nowUtc.getTime() - CST_OFFSET_MS)
   todayCst.setUTCHours(0, 0, 0, 0)
+
+  // 2pm CST cutoff: bank info records updated on or after this timestamp
+  // are deferred to the next business day's run.
+  const cutoffCst = new Date(todayCst.getTime() + 14 * 60 * 60 * 1000) // today 14:00 CST
+  const cutoffUtc = new Date(cutoffCst.getTime() + CST_OFFSET_MS)       // convert back to UTC for DB comparison
 
   const paymentDays = getPaymentDaysToProcess(todayCst)
   const todayStr    = todayCst.toISOString().slice(0, 10)
@@ -81,7 +91,8 @@ export async function POST(req: NextRequest) {
       account_type,
       account_holder_name,
       payment_day,
-      ach_authorized_at
+      ach_authorized_at,
+      updated_at
     `)
     .eq('status', 'active')
     .in('payment_day', paymentDays)
@@ -122,7 +133,16 @@ export async function POST(req: NextRequest) {
   const entries: AchEntry[] = []
   const skipped: string[] = []
 
+  const deferred: string[] = []
+
   for (const bank of bankRecords) {
+    // Skip records changed at or after the 2pm CST cutoff — defer to next business day
+    const lastChanged = bank.updated_at ?? bank.ach_authorized_at
+    if (lastChanged && new Date(lastChanged) >= cutoffUtc) {
+      deferred.push(`${bank.tenant_id}: bank info changed after 2pm CST cutoff`)
+      continue
+    }
+
     const rentInfo = rentByTenant.get(bank.tenant_id)
     if (!rentInfo) {
       skipped.push(`${bank.tenant_id}: no rent amount`)
@@ -150,6 +170,7 @@ export async function POST(req: NextRequest) {
       ok: false,
       message: 'No valid entries to include',
       skipped,
+      deferred,
       paymentDays,
       date: todayStr,
     })
@@ -217,12 +238,14 @@ export async function POST(req: NextRequest) {
       <tr><td style="padding:4px 12px 4px 0;color:#666">Effective date</td><td><strong>${effectiveDate.toISOString().slice(0, 10)}</strong></td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666">File</td><td><strong>${fileName}</strong></td></tr>
       ${skipped.length > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Skipped</td><td>${skipped.length} tenant(s)</td></tr>` : ''}
+      ${deferred.length > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Deferred (after 2pm)</td><td>${deferred.length} tenant(s) — will run tomorrow</td></tr>` : ''}
     </table>
     <p style="margin-top:16px;color:#666;font-size:12px">
       Upload the attached .ach file to your bank portal to initiate the ACH batch.<br>
       Batch ID: ${batch.id}
     </p>
     ${skipped.length > 0 ? `<p style="color:#b22625;font-size:12px"><strong>Skipped tenants:</strong><br>${skipped.join('<br>')}</p>` : ''}
+    ${deferred.length > 0 ? `<p style="color:#b45309;font-size:12px"><strong>Deferred to next business day (changed after 2pm CST):</strong><br>${deferred.join('<br>')}</p>` : ''}
   `
 
   try {
@@ -267,5 +290,6 @@ export async function POST(req: NextRequest) {
     fileName,
     batchId:     batch.id,
     skipped,
+    deferred,
   })
 }
