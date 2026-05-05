@@ -65,16 +65,16 @@ function federalHolidays(year: number): Set<string> {
 }
 
 export function isBusinessDay(d: Date): boolean {
-  const dow = d.getDay()
+  const dow = d.getUTCDay()
   if (dow === 0 || dow === 6) return false // weekend
   const key = d.toISOString().slice(0, 10)
-  return !federalHolidays(d.getFullYear()).has(key)
+  return !federalHolidays(d.getUTCFullYear()).has(key)
 }
 
 export function nextBusinessDay(d: Date): Date {
   const next = new Date(d)
-  next.setDate(next.getDate() + 1)
-  while (!isBusinessDay(next)) next.setDate(next.getDate() + 1)
+  next.setUTCDate(next.getUTCDate() + 1)
+  while (!isBusinessDay(next)) next.setUTCDate(next.getUTCDate() + 1)
   return next
 }
 
