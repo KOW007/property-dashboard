@@ -132,7 +132,7 @@ export default function AchExportClient({ receipts }: { receipts: Receipt[] }) {
   // ODFI config
   const [odfi, setOdfi] = useState<OdfiConfig>({
     routingNumber: '',
-    companyName: 'Spearhead Properties',
+    companyName: 'SPEARHEAD 39TH',
     companyId: '',
     entryDescription: 'RENT',
     effectiveDate: nextBusinessDay(),
@@ -258,7 +258,9 @@ export default function AchExportClient({ receipts }: { receipts: Receipt[] }) {
         rdfiAccountNumber: row.rdfiAccount.trim(),
         amountCents: Math.round((row.amount ?? 0) * 100),
         individualId: String(row.id).slice(0, 15),
-        individualName: (row.payer ?? 'TENANT').slice(0, 22),
+        individualName: row.unit_number
+          ? `${(row.payer ?? 'TENANT').slice(0, 22 - row.unit_number.length - 2)} #${row.unit_number}`
+          : (row.payer ?? 'TENANT').slice(0, 22),
         transactionCode: row.txCode,
       }))
 

@@ -2,15 +2,15 @@
  * POST /api/ach-cron
  *
  * Daily ACH rent collection cron — called by Vercel Cron (see vercel.json).
- * Runs Mon–Fri at 2:00 PM CST (20:00 UTC standard / 19:00 UTC daylight).
+ * Runs Mon–Fri at 2:30 PM CST (20:30 UTC standard / 19:30 UTC daylight).
  *
- * Cutoff rule: any tenant_bank_info record with updated_at >= 2:00 PM CST today
+ * Cutoff rule: any tenant_bank_info record with updated_at >= 2:30 PM CST today
  * is skipped and will be picked up by tomorrow's run (next business day).
  *
  * What it does:
  *  1. Determine which payment_day values are due today (business day logic).
  *  2. Load all active tenant bank info records for those payment days.
- *  3. Skip records changed at or after the 2pm CST cutoff (deferred to tomorrow).
+ *  3. Skip records changed at or after the 2:30pm CST cutoff (deferred to tomorrow).
  *  4. Load each tenant's current monthly rent from rent_roll.
  *  5. Generate a NACHA PPD debit file.
  *  6. Email the file as an attachment to the admin.
@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateNachaFile, type AchEntry, type NachaConfig } from '@/lib/nacha'
+import { uploadAchFile } from '@/lib/boc-bank'
 import { sendEmail } from '@/lib/email'
 import { getPaymentDaysToProcess, nextBusinessDay } from '@/lib/business-days'
 
@@ -44,16 +45,16 @@ export async function POST(req: NextRequest) {
 
   // ── 2. Determine today's payment days ───────────────────────────────────────
   // Treat "today" as CST (UTC-6 standard, UTC-5 daylight).
-  // Vercel runs in UTC; cron fires at 20:00 UTC = 14:00 CST / 15:00 CDT.
+  // Vercel runs in UTC; cron fires at 20:30 UTC = 14:30 CST / 15:30 CDT.
   // We use CST (UTC-6) as the fixed offset — Austin, TX standard time.
   const nowUtc = new Date()
   const CST_OFFSET_MS = 6 * 60 * 60 * 1000
   const todayCst = new Date(nowUtc.getTime() - CST_OFFSET_MS)
   todayCst.setUTCHours(0, 0, 0, 0)
 
-  // 2pm CST cutoff: bank info records updated on or after this timestamp
+  // 2:30pm CST cutoff: bank info records updated on or after this timestamp
   // are deferred to the next business day's run.
-  const cutoffCst = new Date(todayCst.getTime() + 14 * 60 * 60 * 1000) // today 14:00 CST
+  const cutoffCst = new Date(todayCst.getTime() + (14 * 60 + 30) * 60 * 1000) // today 14:30 CST
   const cutoffUtc = new Date(cutoffCst.getTime() + CST_OFFSET_MS)       // convert back to UTC for DB comparison
 
   const paymentDays = getPaymentDaysToProcess(todayCst)
@@ -136,10 +137,10 @@ export async function POST(req: NextRequest) {
   const deferred: string[] = []
 
   for (const bank of bankRecords) {
-    // Skip records changed at or after the 2pm CST cutoff — defer to next business day
+    // Skip records changed at or after the 2:30pm CST cutoff — defer to next business day
     const lastChanged = bank.updated_at ?? bank.ach_authorized_at
     if (lastChanged && new Date(lastChanged) >= cutoffUtc) {
-      deferred.push(`${bank.tenant_id}: bank info changed after 2pm CST cutoff`)
+      deferred.push(`${bank.tenant_id}: bank info changed after 2:30pm CST cutoff`)
       continue
     }
 
@@ -218,7 +219,48 @@ export async function POST(req: NextRequest) {
 
   if (batchErr) throw batchErr
 
-  // ── 9. Email the ACH file as an attachment ──────────────────────────────────
+  // ── 9. Upload ACH file to BOC Bank ─────────────────────────────────────────
+  let bocFileId: string | null = null
+  let bocReferences: unknown[] = []
+
+  try {
+    const bocResponse = await uploadAchFile(nacha.content, fileName)
+    bocFileId = bocResponse.fileId
+    bocReferences = bocResponse.items.map(item => ({
+      bankReference: item.bankReference,
+      traceNumber:   item.traceNumber,
+      individualId:  item.individualId,
+      amount:        item.amount,
+      status:        item.status,
+    }))
+
+    await supabase
+      .from('ach_batches')
+      .update({
+        status:           'uploaded',
+        boc_file_id:      bocFileId,
+        boc_upload_status: bocResponse.status,
+        boc_uploaded_at:  bocResponse.receivedDate,
+        boc_references:   bocReferences,
+      })
+      .eq('id', batch.id)
+
+  } catch (uploadErr: any) {
+    const errMsg = String(uploadErr.message ?? uploadErr)
+    await supabase
+      .from('ach_batches')
+      .update({ status: 'failed', error_message: errMsg })
+      .eq('id', batch.id)
+
+    return NextResponse.json({
+      ok:      false,
+      message: 'ACH file generated but BOC Bank upload failed',
+      error:   errMsg,
+      batchId: batch.id,
+    }, { status: 500 })
+  }
+
+  // ── 10. Email confirmation to admin ─────────────────────────────────────────
   const adminEmail = process.env.ADMIN_ALERT_EMAIL
   if (!adminEmail) throw new Error('ADMIN_ALERT_EMAIL not configured')
 
@@ -230,28 +272,29 @@ export async function POST(req: NextRequest) {
 
   const html = `
     <h2 style="color:#2d2d2d">Daily ACH Rent Collection — ${todayStr}</h2>
-    <p>The ACH file for today's rent collection has been generated.</p>
+    <p>The ACH file has been generated and successfully uploaded to BOC Bank.</p>
     <table style="border-collapse:collapse;font-size:14px">
       <tr><td style="padding:4px 12px 4px 0;color:#666">Run date</td><td><strong>${todayStr}</strong></td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666">Entries</td><td><strong>${nacha.entryCount}</strong></td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666">Total</td><td><strong>${totalDollars}</strong></td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666">Effective date</td><td><strong>${effectiveDate.toISOString().slice(0, 10)}</strong></td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666">File</td><td><strong>${fileName}</strong></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666">BOC File ID</td><td><strong>${bocFileId}</strong></td></tr>
       ${skipped.length > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Skipped</td><td>${skipped.length} tenant(s)</td></tr>` : ''}
-      ${deferred.length > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Deferred (after 2pm)</td><td>${deferred.length} tenant(s) — will run tomorrow</td></tr>` : ''}
+      ${deferred.length > 0 ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Deferred (after 2:30pm)</td><td>${deferred.length} tenant(s) — will run tomorrow</td></tr>` : ''}
     </table>
     <p style="margin-top:16px;color:#666;font-size:12px">
-      Upload the attached .ach file to your bank portal to initiate the ACH batch.<br>
+      The file has been submitted to BOC Bank and is queued for processing. No manual upload needed.<br>
       Batch ID: ${batch.id}
     </p>
     ${skipped.length > 0 ? `<p style="color:#b22625;font-size:12px"><strong>Skipped tenants:</strong><br>${skipped.join('<br>')}</p>` : ''}
-    ${deferred.length > 0 ? `<p style="color:#b45309;font-size:12px"><strong>Deferred to next business day (changed after 2pm CST):</strong><br>${deferred.join('<br>')}</p>` : ''}
+    ${deferred.length > 0 ? `<p style="color:#b45309;font-size:12px"><strong>Deferred to next business day (changed after 2:30pm CST):</strong><br>${deferred.join('<br>')}</p>` : ''}
   `
 
   try {
     await sendEmail({
       to:      adminEmail,
-      subject: `ACH Rent File — ${todayStr} — ${nacha.entryCount} entries — ${totalDollars}`,
+      subject: `ACH Rent File Uploaded — ${todayStr} — ${nacha.entryCount} entries — ${totalDollars}`,
       html,
       attachments: [{
         name:          fileName,
@@ -260,24 +303,24 @@ export async function POST(req: NextRequest) {
       }],
     })
 
-    // Update batch status to 'sent'
     await supabase
       .from('ach_batches')
       .update({ status: 'sent' })
       .eq('id', batch.id)
 
   } catch (emailErr: any) {
-    // Log the email failure but don't crash — file was generated
+    // File was uploaded to BOC Bank — log email failure but don't crash
     await supabase
       .from('ach_batches')
-      .update({ status: 'failed', error_message: String(emailErr.message ?? emailErr) })
+      .update({ error_message: String(emailErr.message ?? emailErr) })
       .eq('id', batch.id)
 
     return NextResponse.json({
-      ok: false,
-      message: 'ACH file generated but email failed',
-      error: String(emailErr.message ?? emailErr),
-      batchId: batch.id,
+      ok:        false,
+      message:   'ACH file uploaded to BOC Bank but confirmation email failed',
+      error:     String(emailErr.message ?? emailErr),
+      batchId:   batch.id,
+      bocFileId,
     }, { status: 500 })
   }
 
@@ -289,6 +332,7 @@ export async function POST(req: NextRequest) {
     totalCents:  nacha.totalDebitCents,
     fileName,
     batchId:     batch.id,
+    bocFileId,
     skipped,
     deferred,
   })
