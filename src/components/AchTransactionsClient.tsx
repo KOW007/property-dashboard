@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface AchTransaction {
   id: string
@@ -19,6 +20,19 @@ interface AchTransaction {
   individual_name: string
   effective_date: string
   received_at: string
+}
+
+interface AchBatch {
+  id: string
+  run_date: string
+  file_name: string | null
+  entry_count: number | null
+  total_cents: number | null
+  status: string
+  boc_file_id: string | null
+  boc_file_status: string | null
+  last_polled_at: string | null
+  boc_references: Array<Record<string, unknown>> | null
 }
 
 type Filter = 'all' | 'ach.settlement' | 'ach.return' | 'ach.noc'
@@ -50,14 +64,37 @@ interface PreviewResult {
 
 export default function AchTransactionsClient({
   transactions,
+  batches: initialBatches,
 }: {
   transactions: AchTransaction[]
+  batches: AchBatch[]
 }) {
+  const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [expandedBatch, setExpandedBatch] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewResult | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [showRaw, setShowRaw] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      const res = await fetch('/api/ach-status-poll', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Refresh failed')
+      setLastRefreshed(new Date())
+      router.refresh()
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const loadPreview = async () => {
     setPreviewLoading(true)
@@ -105,15 +142,137 @@ export default function AchTransactionsClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold text-gray-900">ACH Transactions</h2>
-        <button
-          onClick={loadPreview}
-          disabled={previewLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-[#2d2d2d] text-white rounded-lg text-sm font-medium hover:bg-black disabled:bg-gray-400"
-        >
-          <FileText className="w-4 h-4" />
-          {previewLoading ? 'Loading...' : "Preview Tomorrow's File"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh Status'}
+          </button>
+          <button
+            onClick={loadPreview}
+            disabled={previewLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-[#2d2d2d] text-white rounded-lg text-sm font-medium hover:bg-black disabled:bg-gray-400"
+          >
+            <FileText className="w-4 h-4" />
+            {previewLoading ? 'Loading...' : "Preview Tomorrow's File"}
+          </button>
+        </div>
       </div>
+
+      {/* Refresh feedback */}
+      {refreshError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          Refresh failed: {refreshError}
+        </div>
+      )}
+      {lastRefreshed && !refreshError && (
+        <p className="text-xs text-gray-400">
+          Status last refreshed at {lastRefreshed.toLocaleTimeString()}
+        </p>
+      )}
+
+      {/* ── Batch Status ──────────────────────────────────────────────── */}
+      {initialBatches.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700">Recent Batch Status</h3>
+            <p className="text-xs text-gray-400 mt-0.5">From BOC Bank — click a row to see per-item status</p>
+          </div>
+          <table className="min-w-full divide-y divide-gray-100 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase w-4"></th>
+                <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">File</th>
+                <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bank Status</th>
+                <th className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase">Entries</th>
+                <th className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                <th className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last Polled</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {initialBatches.map(batch => {
+                const isOpen = expandedBatch === batch.id
+                const items = batch.boc_references ?? []
+                const hasPolledItems = items.length > 0 && 'currentStatus' in (items[0] ?? {})
+
+                return (
+                  <>
+                    <tr
+                      key={batch.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setExpandedBatch(isOpen ? null : batch.id)}
+                    >
+                      <td className="px-4 py-3 text-gray-400">
+                        {isOpen
+                          ? <ChevronDown className="w-4 h-4" />
+                          : <ChevronRight className="w-4 h-4" />
+                        }
+                      </td>
+                      <td className="px-6 py-3 text-gray-900 font-medium">
+                        {new Date(batch.run_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-3 font-mono text-gray-600 text-xs">{batch.file_name ?? '—'}</td>
+                      <td className="px-6 py-3">
+                        {batch.boc_file_status
+                          ? <BocFileBadge status={batch.boc_file_status} />
+                          : <span className="text-gray-400 text-xs">Not yet polled</span>
+                        }
+                      </td>
+                      <td className="px-6 py-3 text-right text-gray-700">{batch.entry_count ?? '—'}</td>
+                      <td className="px-6 py-3 text-right text-gray-700">
+                        {batch.total_cents != null ? formatCents(batch.total_cents) : '—'}
+                      </td>
+                      <td className="px-6 py-3 text-gray-400 text-xs">
+                        {batch.last_polled_at
+                          ? new Date(batch.last_polled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                          : '—'
+                        }
+                      </td>
+                    </tr>
+
+                    {isOpen && (
+                      <tr key={`${batch.id}-items`}>
+                        <td colSpan={7} className="px-6 pb-4 bg-gray-50">
+                          {!hasPolledItems ? (
+                            <p className="text-xs text-gray-400 pt-3">
+                              No item-level status yet — click Refresh Status to fetch from BOC Bank.
+                            </p>
+                          ) : (
+                            <table className="min-w-full mt-2 text-xs">
+                              <thead>
+                                <tr className="text-gray-500">
+                                  <th className="py-1 text-left font-medium pr-8">Tenant</th>
+                                  <th className="py-1 text-right font-medium pr-8">Amount</th>
+                                  <th className="py-1 text-left font-medium pr-8">Status</th>
+                                  <th className="py-1 text-left font-medium">Effective Date</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {items.map((item, i) => (
+                                  <tr key={i} className="text-gray-700">
+                                    <td className="py-1.5 pr-8 font-medium">{String(item.individualName ?? '—')}</td>
+                                    <td className="py-1.5 pr-8 text-right">{typeof item.amount === 'number' ? formatCents(item.amount * 100) : '—'}</td>
+                                    <td className="py-1.5 pr-8"><BocItemBadge status={String(item.currentStatus ?? '')} /></td>
+                                    <td className="py-1.5 text-gray-500">{String(item.effectiveDate ?? '—')}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Preview Modal ──────────────────────────────────────────────── */}
       {preview && (
@@ -486,4 +645,35 @@ function severityColor(severity: 'high' | 'medium' | 'low' | null): string {
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+function BocFileBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    Accepted: 'bg-blue-100 text-blue-800',
+    Rejected: 'bg-red-100 text-red-800',
+    Received: 'bg-gray-100 text-gray-700',
+  }
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {status}
+    </span>
+  )
+}
+
+function BocItemBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    Received:    'bg-gray-100 text-gray-600',
+    Accepted:    'bg-blue-100 text-blue-700',
+    Rejected:    'bg-red-100 text-red-700',
+    Transmitted: 'bg-indigo-100 text-indigo-700',
+    Settled:     'bg-green-100 text-green-700',
+    Returned:    'bg-red-100 text-red-700',
+    NOCApplied:  'bg-amber-100 text-amber-700',
+  }
+  if (!status) return <span className="text-gray-400">—</span>
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {status}
+    </span>
+  )
 }
