@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X, RefreshCw, ChevronDown, ChevronRight, Play } from 'lucide-react'
 
 interface AchTransaction {
   id: string
@@ -79,6 +79,8 @@ export default function AchTransactionsClient({
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+  const [running, setRunning] = useState(false)
+  const [runResult, setRunResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -93,6 +95,25 @@ export default function AchTransactionsClient({
       setRefreshError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  const handleRunNow = async () => {
+    if (!confirm('Run ACH collection for today? This will upload a file to BOC Bank and send a confirmation email.')) return
+    setRunning(true)
+    setRunResult(null)
+    try {
+      const res  = await fetch('/api/ach-run-now', { method: 'POST' })
+      const data = await res.json()
+      setRunResult({
+        ok:      data.ok ?? res.ok,
+        message: data.message ?? (res.ok ? `Done — ${data.entryCount} entries, batch ${data.batchId}` : data.error ?? 'Unknown error'),
+      })
+      if (data.ok) router.refresh()
+    } catch (err) {
+      setRunResult({ ok: false, message: err instanceof Error ? err.message : 'Network error' })
+    } finally {
+      setRunning(false)
     }
   }
 
@@ -154,10 +175,18 @@ export default function AchTransactionsClient({
           <button
             onClick={loadPreview}
             disabled={previewLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#2d2d2d] text-white rounded-lg text-sm font-medium hover:bg-black disabled:bg-gray-400"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:bg-gray-400"
           >
             <FileText className="w-4 h-4" />
-            {previewLoading ? 'Loading...' : "Preview Tomorrow's File"}
+            {previewLoading ? 'Loading...' : "Preview Today's File"}
+          </button>
+          <button
+            onClick={handleRunNow}
+            disabled={running}
+            className="flex items-center gap-2 px-4 py-2 bg-[#b22625] text-white rounded-lg text-sm font-medium hover:bg-red-800 disabled:bg-gray-400"
+          >
+            <Play className="w-4 h-4" />
+            {running ? 'Running...' : 'Run Now'}
           </button>
         </div>
       </div>
@@ -172,6 +201,20 @@ export default function AchTransactionsClient({
         <p className="text-xs text-gray-400">
           Status last refreshed at {lastRefreshed.toLocaleTimeString()}
         </p>
+      )}
+
+      {/* Run Now feedback */}
+      {runResult && (
+        <div className={`flex items-start justify-between rounded-lg px-4 py-3 text-sm ${
+          runResult.ok
+            ? 'bg-green-50 border border-green-200 text-green-800'
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <span>{runResult.ok ? '✓ ' : '✗ '}{runResult.message}</span>
+          <button onClick={() => setRunResult(null)} className="ml-4 opacity-60 hover:opacity-100">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {/* ── Batch Status ──────────────────────────────────────────────── */}
