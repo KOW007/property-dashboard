@@ -78,6 +78,7 @@ export default function AchTransactionsClient({
   const [showRaw, setShowRaw] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [refreshResult, setRefreshResult] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<{ ok: boolean; message: string } | null>(null)
@@ -85,11 +86,24 @@ export default function AchTransactionsClient({
   const handleRefresh = async () => {
     setRefreshing(true)
     setRefreshError(null)
+    setRefreshResult(null)
     try {
-      const res = await fetch('/api/ach-status-poll', { method: 'POST' })
+      const res  = await fetch('/api/ach-status-poll', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Refresh failed')
       setLastRefreshed(new Date())
+      if (data.message) {
+        setRefreshResult(data.message)
+      } else if (data.polled?.length > 0) {
+        const summary = data.polled.map((p: { fileName?: string; fileStatus: string; itemCount: number; error?: string }) =>
+          p.error
+            ? `${p.fileName ?? 'unknown'}: ${p.error}`
+            : `${p.fileName ?? 'unknown'} — ${p.fileStatus}, ${p.itemCount} item(s)`
+        ).join('\n')
+        setRefreshResult(summary)
+      } else {
+        setRefreshResult('No files returned from BOC Bank')
+      }
       router.refresh()
     } catch (err) {
       setRefreshError(err instanceof Error ? err.message : 'Unknown error')
@@ -198,9 +212,12 @@ export default function AchTransactionsClient({
         </div>
       )}
       {lastRefreshed && !refreshError && (
-        <p className="text-xs text-gray-400">
-          Status last refreshed at {lastRefreshed.toLocaleTimeString()}
-        </p>
+        <div className="text-xs text-gray-400 space-y-1">
+          <p>Status last refreshed at {lastRefreshed.toLocaleTimeString()}</p>
+          {refreshResult && (
+            <pre className="whitespace-pre-wrap font-mono text-gray-500">{refreshResult}</pre>
+          )}
+        </div>
       )}
 
       {/* Run Now feedback */}
