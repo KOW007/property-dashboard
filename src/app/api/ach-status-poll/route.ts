@@ -1,17 +1,13 @@
 /**
  * POST /api/ach-status-poll
  *
- * Polls BOC Bank for current ACH status on all batches from the last 5 calendar
- * days. Overwrites boc_references with full item status data and updates
- * boc_file_status / last_polled_at on ach_batches.
+ * Polls BOC Bank for the last 5 days by date range, then matches returned
+ * files to our ach_batches records by file_name. This works regardless of
+ * whether the upload succeeded (has a boc_file_id) or failed on our end —
+ * BOC Bank is the source of truth.
  *
  * Called manually from the admin ACH dashboard. Requires an authenticated
  * admin session.
- *
- * Run this once in Supabase SQL editor before first use:
- *   ALTER TABLE ach_batches
- *     ADD COLUMN IF NOT EXISTS boc_file_status text,
- *     ADD COLUMN IF NOT EXISTS last_polled_at  timestamptz;
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -39,83 +35,77 @@ export async function POST(req: NextRequest) {
 
   const supabase = getServiceSupabase()
 
-  const since = new Date()
-  since.setDate(since.getDate() - 5)
-  const sinceStr = since.toISOString().slice(0, 10)
+  const toDate   = new Date()
+  const fromDate = new Date()
+  fromDate.setDate(fromDate.getDate() - 5)
+  const fromStr = fromDate.toISOString().slice(0, 10)
+  const toStr   = toDate.toISOString().slice(0, 10)
 
-  // Batches with a BOC file ID — poll by file ID
-  const { data: uploadedBatches, error: batchErr } = await supabase
+  // Load our batch records for the window so we can match by file_name
+  const { data: batches, error: batchErr } = await supabase
     .from('ach_batches')
-    .select('id, boc_file_id, file_name, run_date')
-    .not('boc_file_id', 'is', null)
-    .neq('status', 'failed')
-    .gte('run_date', sinceStr)
+    .select('id, boc_file_id, file_name, run_date, status')
+    .gte('run_date', fromStr)
     .order('run_date', { ascending: false })
 
   if (batchErr) {
     return NextResponse.json({ error: batchErr.message }, { status: 500 })
   }
 
-  // Failed batches with no BOC file ID but a file_name — poll by filename
-  // (covers cases where upload returned an error but BOC Bank still received the file)
-  const { data: failedBatches } = await supabase
-    .from('ach_batches')
-    .select('id, boc_file_id, file_name, run_date')
-    .is('boc_file_id', null)
-    .eq('status', 'failed')
-    .not('file_name', 'is', null)
-    .gte('run_date', sinceStr)
-    .order('run_date', { ascending: false })
+  // Build a lookup map: file_name → batch row
+  const batchByFileName = new Map((batches ?? []).map(b => [b.file_name, b]))
 
-  const batches = [...(uploadedBatches ?? []), ...(failedBatches ?? [])]
+  // Poll BOC Bank for all files in the date range
+  let bocFiles
+  try {
+    const result = await pollAchStatus({ fromDate: fromStr, toDate: toStr })
+    bocFiles = result.files
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `BOC Bank poll failed: ${errMsg}` }, { status: 500 })
+  }
 
-  if (batches.length === 0) {
-    return NextResponse.json({ ok: true, message: 'No recent batches to poll', polled: [] })
+  if (!bocFiles || bocFiles.length === 0) {
+    return NextResponse.json({ ok: true, message: 'No files found at BOC Bank for this period', polled: [] })
   }
 
   const polled: Array<{
     runDate:    string
     fileId:     string
+    fileName:   string
     fileStatus: string
     itemCount:  number
     error?:     string
   }> = []
 
-  for (const batch of batches) {
-    try {
-      const query = batch.boc_file_id
-        ? { fileId: batch.boc_file_id }
-        : { fileName: batch.file_name as string }
+  for (const file of bocFiles) {
+    const fileName = file.fileName ?? ''
+    const batch    = batchByFileName.get(fileName)
 
-      const { files } = await pollAchStatus(query)
-      const file = files[0]
-
-      if (!file) {
-        polled.push({ runDate: batch.run_date, fileId: batch.boc_file_id ?? batch.file_name, fileStatus: 'not_found', itemCount: 0, error: 'Not found at BOC Bank' })
-        continue
-      }
-
-      await supabase
-        .from('ach_batches')
-        .update({
-          boc_file_id:     file.fileId,
-          boc_file_status: file.status,
-          boc_references:  file.items,
-          status:          'uploaded',
-          last_polled_at:  new Date().toISOString(),
-        })
-        .eq('id', batch.id)
-
-      polled.push({
-        runDate:    batch.run_date,
-        fileId:     file.fileId,
-        fileStatus: file.status,
-        itemCount:  file.items.length,
-      })
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err)
-      polled.push({ runDate: batch.run_date, fileId: batch.boc_file_id ?? batch.file_name ?? '', fileStatus: 'error', itemCount: 0, error: errMsg })
+    if (!batch) {
+      // BOC Bank has a file we don't have a local record for — skip
+      polled.push({ runDate: '?', fileId: file.fileId, fileName, fileStatus: file.status, itemCount: file.items.length, error: 'No matching local batch' })
+      continue
     }
+
+    await supabase
+      .from('ach_batches')
+      .update({
+        boc_file_id:      file.fileId,
+        boc_file_status:  file.status,
+        boc_references:   file.items,
+        status:           batch.status === 'failed' ? 'uploaded' : batch.status,
+        last_polled_at:   new Date().toISOString(),
+      })
+      .eq('id', batch.id)
+
+    polled.push({
+      runDate:    batch.run_date,
+      fileId:     file.fileId,
+      fileName,
+      fileStatus: file.status,
+      itemCount:  file.items.length,
+    })
   }
 
   return NextResponse.json({ ok: true, polled })
