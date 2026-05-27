@@ -136,12 +136,16 @@ export async function POST(req: NextRequest) {
         attachments: logoAttachment,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-            <div style="background:#2d2d2d;padding:40px;text-align:center">
-              ${logoBase64
-                ? `<img src="cid:logo@spearhead" alt="Spearhead Properties" style="height:50px;display:block;margin:0 auto" />`
-                : `<span style="color:#fff;font-size:20px;font-weight:bold">Spearhead Properties</span>`
-              }
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#2d2d2d">
+              <tr>
+                <td style="padding:40px 20px;text-align:center">
+                  ${logoBase64
+                    ? `<img src="cid:logo@spearhead" alt="Spearhead Properties" style="height:50px;display:block;margin:0 auto" />`
+                    : `<span style="color:#fff;font-size:20px;font-weight:bold">Spearhead Properties</span>`
+                  }
+                </td>
+              </tr>
+            </table>
             <div style="padding:32px">
               <h2 style="color:#2d2d2d;margin-top:20px">Rent Collection submitted on ${runDateFormatted} for ${name}</h2>
               <p style="color:#444">Electronic payment was submitted.</p>
