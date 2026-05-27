@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X, RefreshCw, ChevronDown, ChevronRight, Play } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, FileText, Download, X, RefreshCw, ChevronDown, ChevronRight, Play, Mail } from 'lucide-react'
 
 interface AchTransaction {
   id: string
@@ -82,6 +82,8 @@ export default function AchTransactionsClient({
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [resending, setResending] = useState<string | null>(null)
+  const [resendResult, setResendResult] = useState<Record<string, { ok: boolean; message: string }>>({})
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -128,6 +130,35 @@ export default function AchTransactionsClient({
       setRunResult({ ok: false, message: err instanceof Error ? err.message : 'Network error' })
     } finally {
       setRunning(false)
+    }
+  }
+
+  const handleResendEmails = async (batchId: string) => {
+    setResending(batchId)
+    setResendResult(prev => ({ ...prev, [batchId]: { ok: true, message: 'Sending...' } }))
+    try {
+      const res  = await fetch('/api/ach-resend-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId }),
+      })
+      const data = await res.json()
+      setResendResult(prev => ({
+        ...prev,
+        [batchId]: {
+          ok:      data.ok ?? res.ok,
+          message: data.ok
+            ? `Sent ${data.sent} email${data.sent !== 1 ? 's' : ''}${data.skipped ? `, ${data.skipped} skipped` : ''}`
+            : (data.error ?? 'Failed'),
+        },
+      }))
+    } catch (err) {
+      setResendResult(prev => ({
+        ...prev,
+        [batchId]: { ok: false, message: err instanceof Error ? err.message : 'Network error' },
+      }))
+    } finally {
+      setResending(null)
     }
   }
 
@@ -297,8 +328,24 @@ export default function AchTransactionsClient({
                     {isOpen && (
                       <tr key={`${batch.id}-items`}>
                         <td colSpan={7} className="px-6 pb-4 bg-gray-50">
+                          <div className="flex items-center gap-3 pt-3 pb-2">
+                            <button
+                              onClick={() => handleResendEmails(batch.id)}
+                              disabled={resending === batch.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                              {resending === batch.id ? 'Sending...' : 'Resend Tenant Emails'}
+                            </button>
+                            {resendResult[batch.id] && (
+                              <span className={`text-xs ${resendResult[batch.id].ok ? 'text-green-600' : 'text-red-600'}`}>
+                                {resendResult[batch.id].message}
+                              </span>
+                            )}
+                          </div>
+
                           {!hasPolledItems ? (
-                            <p className="text-xs text-gray-400 pt-3">
+                            <p className="text-xs text-gray-400 pb-3">
                               No item-level status yet — click Refresh Status to fetch from BOC Bank.
                             </p>
                           ) : (
