@@ -2,7 +2,7 @@
  * POST /api/ach-cron
  *
  * Daily ACH rent collection cron — called by Vercel Cron (see vercel.json).
- * Runs Mon–Fri at 2:30 PM CST (20:30 UTC standard / 19:30 UTC daylight).
+ * Runs Mon–Fri at 2:30 PM CDT (19:30 UTC daylight / 20:30 UTC standard).
  *
  * Cutoff rule: any tenant_bank_info record with updated_at >= 2:30 PM CST today
  * is skipped and will be picked up by tomorrow's run (next business day).
