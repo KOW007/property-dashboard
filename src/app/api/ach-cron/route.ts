@@ -377,3 +377,6 @@ export async function POST(req: NextRequest) {
     deferred,
   })
 }
+
+// Vercel Cron sends GET requests — re-export POST handler
+export const GET = POST
