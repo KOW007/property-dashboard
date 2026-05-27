@@ -66,16 +66,19 @@ export interface EmailAttachment {
   name: string          // file name, e.g. "rent_20260401.ach"
   contentType: string   // MIME type, e.g. "application/octet-stream"
   contentBase64: string // base64-encoded file content
+  isInline?: boolean    // true = inline image; reference in HTML as cid:<contentId>
+  contentId?: string    // e.g. "logo@spearhead" — used in src="cid:logo@spearhead"
 }
 
 export interface EmailOptions {
   to: string | string[]
   subject: string
   html: string
+  fromName?: string          // display name shown in recipient's inbox, e.g. "Spearhead Properties"
   attachments?: EmailAttachment[]
 }
 
-export async function sendEmail({ to, subject, html, attachments }: EmailOptions) {
+export async function sendEmail({ to, subject, html, fromName, attachments }: EmailOptions) {
   const sender = process.env.OUTLOOK_SENDER
   if (!sender) {
     throw new Error('OUTLOOK_SENDER not configured in .env.local')
@@ -93,12 +96,18 @@ export async function sendEmail({ to, subject, html, attachments }: EmailOptions
     toRecipients,
   }
 
+  if (fromName) {
+    message.from = { emailAddress: { name: fromName, address: sender } }
+  }
+
   if (attachments && attachments.length > 0) {
     message.attachments = attachments.map(a => ({
       '@odata.type':  '#microsoft.graph.fileAttachment',
       name:           a.name,
       contentType:    a.contentType,
       contentBytes:   a.contentBase64,
+      ...(a.isInline   && { isInline:  true }),
+      ...(a.contentId  && { contentId: a.contentId }),
     }))
   }
 

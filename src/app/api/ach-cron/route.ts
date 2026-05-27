@@ -22,6 +22,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import fs from 'fs'
+import path from 'path'
 import { generateNachaFile, type AchEntry, type NachaConfig } from '@/lib/nacha'
 import { uploadAchFile } from '@/lib/boc-bank'
 import { sendEmail } from '@/lib/email'
@@ -267,18 +269,62 @@ export async function POST(req: NextRequest) {
 
     // ── 9b. Email tenants — fire-and-forget, don't block on failures ───────
     if (tenantPayments.length > 0) {
-      const effectiveDateStr = effectiveDate.toISOString().slice(0, 10)
+      // Format dates as MM-DD-YYYY for display
+      const [ty, tm, td] = todayStr.split('-')
+      const todayFormatted = `${tm}-${td}-${ty}`
+
+      const effStr = effectiveDate.toISOString().slice(0, 10)
+      const [ey, em, ed] = effStr.split('-')
+      const effectiveFormatted = `${em}-${ed}-${ey}`
+
+      // Load logo once for all tenant emails
+      let logoBase64 = ''
+      try {
+        logoBase64 = fs.readFileSync(path.join(process.cwd(), 'public', 'logo.png')).toString('base64')
+      } catch { /* logo missing — email sends without it */ }
+
+      const logoAttachment = logoBase64 ? [{
+        name:          'logo.png',
+        contentType:   'image/png',
+        contentBase64: logoBase64,
+        isInline:      true,
+        contentId:     'logo@spearhead',
+      }] : []
+
       await Promise.allSettled(
         tenantPayments.map(({ email, name, amountCents }) => {
           const dollars = (amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           return sendEmail({
-            to:      email,
-            subject: `Rent Payment Submitted — ${dollars}`,
+            to:          email,
+            fromName:    'Spearhead Properties',
+            subject:     'Spearhead Rent Collection Submitted',
+            attachments: logoAttachment,
             html: `
-              <p>Hi ${name},</p>
-              <p>Your rent payment of <strong>${dollars}</strong> has been submitted for processing and will be debited from your account on <strong>${effectiveDateStr}</strong>.</p>
-              <p>If you have any questions, please don't hesitate to reach out.</p>
-              <p style="color:#666;font-size:12px">— Spearhead Properties</p>
+              <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+                <div style="background:#2d2d2d;padding:20px;text-align:center">
+                  ${logoBase64
+                    ? `<img src="cid:logo@spearhead" alt="Spearhead Properties" style="height:50px" />`
+                    : `<span style="color:#fff;font-size:20px;font-weight:bold">Spearhead Properties</span>`
+                  }
+                </div>
+                <div style="padding:32px">
+                  <h2 style="color:#2d2d2d;margin-top:0">Rent Collection on ${todayFormatted} for ${name}</h2>
+                  <p style="color:#444">Electronic payment request was submitted.</p>
+                  <table style="border-collapse:collapse;font-size:14px;margin-top:16px">
+                    <tr>
+                      <td style="padding:4px 24px 4px 0;color:#666">Amount</td>
+                      <td><strong>${dollars}</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:4px 24px 4px 0;color:#666">Effective date</td>
+                      <td><strong>${effectiveFormatted}</strong></td>
+                    </tr>
+                  </table>
+                  <p style="color:#888;font-size:12px;margin-top:32px">
+                    If you have any questions, please <a href="mailto:info@spearheadproperties.com" style="color:#b22625">email us</a> for help.
+                  </p>
+                </div>
+              </div>
             `,
           })
         })
