@@ -130,11 +130,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── 5b. Load tenant emails ──────────────────────────────────────────────────
+  const { data: tenantEmailRows } = await supabase
+    .from('tenants')
+    .select('id, email, first_name')
+    .in('id', tenantIds)
+
+  const emailByTenant = new Map<string, { email: string; firstName: string }>()
+  for (const row of tenantEmailRows ?? []) {
+    if (row.email) emailByTenant.set(row.id, { email: row.email, firstName: row.first_name ?? '' })
+  }
+
   // ── 6. Build ACH entries ────────────────────────────────────────────────────
   const entries: AchEntry[] = []
   const skipped: string[] = []
-
   const deferred: string[] = []
+  const tenantPayments: Array<{ email: string; name: string; amountCents: number }> = []
 
   for (const bank of bankRecords) {
     // Skip records changed at or after the 2:30pm CST cutoff — defer to next business day
@@ -164,6 +175,15 @@ export async function POST(req: NextRequest) {
       individualId:      bank.tenant_id.slice(0, 15),
       individualName:    (bank.account_holder_name ?? rentInfo.name).slice(0, 22),
     })
+
+    const contact = emailByTenant.get(bank.tenant_id)
+    if (contact) {
+      tenantPayments.push({
+        email:       contact.email,
+        name:        contact.firstName || rentInfo.name,
+        amountCents: rentInfo.rent,
+      })
+    }
   }
 
   if (entries.length === 0) {
@@ -244,6 +264,26 @@ export async function POST(req: NextRequest) {
         boc_references:   bocReferences,
       })
       .eq('id', batch.id)
+
+    // ── 9b. Email tenants — fire-and-forget, don't block on failures ───────
+    if (tenantPayments.length > 0) {
+      const effectiveDateStr = effectiveDate.toISOString().slice(0, 10)
+      await Promise.allSettled(
+        tenantPayments.map(({ email, name, amountCents }) => {
+          const dollars = (amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+          return sendEmail({
+            to:      email,
+            subject: `Rent Payment Submitted — ${dollars}`,
+            html: `
+              <p>Hi ${name},</p>
+              <p>Your rent payment of <strong>${dollars}</strong> has been submitted for processing and will be debited from your account on <strong>${effectiveDateStr}</strong>.</p>
+              <p>If you have any questions, please don't hesitate to reach out.</p>
+              <p style="color:#666;font-size:12px">— Spearhead Properties</p>
+            `,
+          })
+        })
+      )
+    }
 
   } catch (uploadErr: any) {
     const errMsg = String(uploadErr.message ?? uploadErr)
