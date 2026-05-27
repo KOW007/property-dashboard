@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
         contentId:     'logo@spearhead',
       }] : []
 
-      await Promise.allSettled(
+      const emailResults = await Promise.allSettled(
         tenantPayments.map(({ email, name, amountCents }) => {
           const dollars = (amountCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
           return sendEmail({
@@ -329,6 +329,12 @@ export async function POST(req: NextRequest) {
           })
         })
       )
+
+      const sentCount = emailResults.filter(r => r.status === 'fulfilled').length
+      await supabase
+        .from('ach_batches')
+        .update({ email_log: [{ sent_at: new Date().toISOString(), count: sentCount, type: 'auto' }] })
+        .eq('id', batch.id)
     }
 
   } catch (uploadErr: any) {

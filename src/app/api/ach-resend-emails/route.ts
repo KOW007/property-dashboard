@@ -167,5 +167,18 @@ export async function POST(req: NextRequest) {
     .filter(r => r.status === 'rejected')
     .map(r => (r as PromiseRejectedResult).reason?.message ?? 'Unknown error')
 
+  // ── Append to email_log ──────────────────────────────────────────────────────
+  const { data: current } = await supabase
+    .from('ach_batches')
+    .select('email_log')
+    .eq('id', batchId)
+    .single()
+
+  const existingLog = (current?.email_log ?? []) as Array<Record<string, unknown>>
+  await supabase
+    .from('ach_batches')
+    .update({ email_log: [...existingLog, { sent_at: new Date().toISOString(), count: sent, type: 'resend' }] })
+    .eq('id', batchId)
+
   return NextResponse.json({ ok: true, sent, skipped, errors })
 }

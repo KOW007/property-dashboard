@@ -22,6 +22,12 @@ interface AchTransaction {
   received_at: string
 }
 
+interface EmailLogEntry {
+  sent_at: string
+  count: number
+  type: 'auto' | 'resend'
+}
+
 interface AchBatch {
   id: string
   run_date: string
@@ -33,6 +39,7 @@ interface AchBatch {
   boc_file_status: string | null
   last_polled_at: string | null
   boc_references: Array<Record<string, unknown>> | null
+  email_log: EmailLogEntry[] | null
 }
 
 type Filter = 'all' | 'ach.settlement' | 'ach.return' | 'ach.noc'
@@ -343,6 +350,29 @@ export default function AchTransactionsClient({
                               </span>
                             )}
                           </div>
+
+                          {/* Email log */}
+                          {(batch.email_log ?? []).length > 0 && (
+                            <div className="pb-3">
+                              <p className="text-xs font-medium text-gray-500 mb-1">Email History</p>
+                              <div className="space-y-0.5">
+                                {(batch.email_log ?? []).map((entry, i) => (
+                                  <p key={i} className="text-xs text-gray-500">
+                                    <span className={`font-medium ${entry.type === 'auto' ? 'text-gray-700' : 'text-blue-600'}`}>
+                                      {entry.type === 'auto' ? 'Auto' : 'Resend'}
+                                    </span>
+                                    {' — '}
+                                    {new Date(entry.sent_at).toLocaleString('en-US', {
+                                      month: 'short', day: 'numeric', year: 'numeric',
+                                      hour: 'numeric', minute: '2-digit',
+                                    })}
+                                    {' · '}
+                                    {entry.count} sent
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           {!hasPolledItems ? (
                             <p className="text-xs text-gray-400 pb-3">

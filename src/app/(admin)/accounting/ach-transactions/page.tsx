@@ -24,7 +24,7 @@ export default async function AchTransactionsPage() {
       .limit(200),
     serviceSupabase
       .from('ach_batches')
-      .select('id, run_date, file_name, entry_count, total_cents, status, boc_file_id, boc_file_status, last_polled_at, boc_references')
+      .select('id, run_date, file_name, entry_count, total_cents, status, boc_file_id, boc_file_status, last_polled_at, boc_references, email_log')
       .not('boc_file_id', 'is', null)
       .order('run_date', { ascending: false })
       .limit(10),
