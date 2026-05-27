@@ -135,12 +135,15 @@ export async function POST(req: NextRequest) {
   // ── 5b. Load tenant emails ──────────────────────────────────────────────────
   const { data: tenantEmailRows } = await supabase
     .from('tenants')
-    .select('id, email, first_name')
+    .select('id, email, first_name, last_name')
     .in('id', tenantIds)
 
-  const emailByTenant = new Map<string, { email: string; firstName: string }>()
+  const emailByTenant = new Map<string, { email: string; fullName: string }>()
   for (const row of tenantEmailRows ?? []) {
-    if (row.email) emailByTenant.set(row.id, { email: row.email, firstName: row.first_name ?? '' })
+    if (row.email) emailByTenant.set(row.id, {
+      email:    row.email,
+      fullName: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim(),
+    })
   }
 
   // ── 6. Build ACH entries ────────────────────────────────────────────────────
@@ -182,7 +185,7 @@ export async function POST(req: NextRequest) {
     if (contact) {
       tenantPayments.push({
         email:       contact.email,
-        name:        contact.firstName || rentInfo.name,
+        name:        contact.fullName || rentInfo.name,
         amountCents: rentInfo.rent,
       })
     }
@@ -301,14 +304,14 @@ export async function POST(req: NextRequest) {
             attachments: logoAttachment,
             html: `
               <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-                <div style="background:#2d2d2d;padding:20px;text-align:center">
+                <div style="background:#2d2d2d;padding:40px 20px;text-align:center">
                   ${logoBase64
                     ? `<img src="cid:logo@spearhead" alt="Spearhead Properties" style="height:50px" />`
                     : `<span style="color:#fff;font-size:20px;font-weight:bold">Spearhead Properties</span>`
                   }
                 </div>
                 <div style="padding:32px">
-                  <h2 style="color:#2d2d2d;margin-top:0">Rent Collection on ${todayFormatted} for ${name}</h2>
+                  <h2 style="color:#2d2d2d;margin-top:0">Rent Collection submitted on ${todayFormatted} for ${name}</h2>
                   <p style="color:#444">Electronic payment request was submitted.</p>
                   <table style="border-collapse:collapse;font-size:14px;margin-top:16px">
                     <tr>
@@ -321,7 +324,7 @@ export async function POST(req: NextRequest) {
                     </tr>
                   </table>
                   <p style="color:#888;font-size:12px;margin-top:32px">
-                    If you have any questions, please <a href="mailto:info@spearheadproperties.com" style="color:#b22625">email us</a> for help.
+                    If you have any questions, please <a href="mailto:info@spearheadproperties.com" style="color:#b22625">email us</a>.
                   </p>
                 </div>
               </div>

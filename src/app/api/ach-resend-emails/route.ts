@@ -77,12 +77,15 @@ export async function POST(req: NextRequest) {
 
   const { data: tenantRows } = await supabase
     .from('tenants')
-    .select('id, email, first_name')
+    .select('id, email, first_name, last_name')
     .in('id', tenantIds)
 
-  const tenantContactById = new Map<string, { email: string; firstName: string }>()
+  const tenantContactById = new Map<string, { email: string; fullName: string }>()
   for (const t of tenantRows ?? []) {
-    if (t.email) tenantContactById.set(t.id, { email: t.email, firstName: t.first_name ?? '' })
+    if (t.email) tenantContactById.set(t.id, {
+      email:    t.email,
+      fullName: `${t.first_name ?? ''} ${t.last_name ?? ''}`.trim(),
+    })
   }
 
   // ── Compute dates ────────────────────────────────────────────────────────────
@@ -124,7 +127,7 @@ export async function POST(req: NextRequest) {
 
       const amountDollars = typeof item.amount === 'number' ? item.amount : 0
       const dollars = amountDollars.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-      const name    = contact.firstName || String(item.individualName ?? 'Tenant')
+      const name    = contact.fullName || String(item.individualName ?? 'Tenant')
 
       await sendEmail({
         to:          contact.email,
@@ -133,14 +136,14 @@ export async function POST(req: NextRequest) {
         attachments: logoAttachment,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-            <div style="background:#2d2d2d;padding:20px;text-align:center">
+            <div style="background:#2d2d2d;padding:40px 20px;text-align:center">
               ${logoBase64
                 ? `<img src="cid:logo@spearhead" alt="Spearhead Properties" style="height:50px" />`
                 : `<span style="color:#fff;font-size:20px;font-weight:bold">Spearhead Properties</span>`
               }
             </div>
             <div style="padding:32px">
-              <h2 style="color:#2d2d2d;margin-top:0">Rent Collection on ${runDateFormatted} for ${name}</h2>
+              <h2 style="color:#2d2d2d;margin-top:0">Rent Collection submitted on ${runDateFormatted} for ${name}</h2>
               <p style="color:#444">Electronic payment request was submitted.</p>
               <table style="border-collapse:collapse;font-size:14px;margin-top:16px">
                 <tr>
@@ -153,7 +156,7 @@ export async function POST(req: NextRequest) {
                 </tr>
               </table>
               <p style="color:#888;font-size:12px;margin-top:32px">
-                If you have any questions, please <a href="mailto:info@spearheadproperties.com" style="color:#b22625">email us</a> for help.
+                If you have any questions, please <a href="mailto:info@spearheadproperties.com" style="color:#b22625">email us</a>.
               </p>
             </div>
           </div>
