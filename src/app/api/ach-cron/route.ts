@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
                   </tr>
                 </table>
                 <div style="padding:32px">
-                  <h2 style="color:#2d2d2d;margin-top:20px">Rent Collection submitted on ${todayFormatted} for ${name}</h2>
+                  <h3 style="color:#2d2d2d;margin-top:20px">Rent Collection submitted on ${todayFormatted} for ${name}</h3>
                   <p style="color:#444">Electronic payment was submitted.</p>
                   <table style="border-collapse:collapse;font-size:14px;margin-top:8px">
                     <tr>
