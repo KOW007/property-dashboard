@@ -549,7 +549,7 @@ export default function AchTransactionsClient({
           label="Settled"
           count={counts.settled}
           amount={totalSettledCents}
-          color="green"
+          color="dark"
           icon={<CheckCircle2 className="w-5 h-5" />}
         />
         <SummaryCard
@@ -562,7 +562,7 @@ export default function AchTransactionsClient({
         <SummaryCard
           label="Notice of Change"
           count={counts.noc}
-          color="amber"
+          color="neutral"
           icon={<AlertTriangle className="w-5 h-5" />}
         />
       </div>
@@ -717,26 +717,18 @@ function SummaryCard({
   label: string
   count: number
   amount?: number
-  color: 'green' | 'red' | 'amber'
+  color: 'dark' | 'red' | 'neutral'
   icon: React.ReactNode
 }) {
-  const colors = {
-    green: 'bg-green-50 border-green-200 text-green-700',
-    red:   'bg-red-50 border-red-200 text-red-700',
-    amber: 'bg-amber-50 border-amber-200 text-amber-700',
-  }
-  const numColors = {
-    green: 'text-green-800',
-    red:   'text-red-800',
-    amber: 'text-amber-800',
-  }
+  const iconColor = color === 'red' ? 'text-[#b22625]' : 'text-[#2d2d2d]'
+  const numColor  = color === 'red' ? 'text-[#b22625]' : 'text-[#2d2d2d]'
 
   return (
-    <div className={`rounded-lg border p-4 ${colors[color]}`}>
-      <div className="flex items-center gap-2 mb-2 opacity-70">{icon}<span className="text-sm font-medium">{label}</span></div>
-      <div className={`text-3xl font-bold ${numColors[color]}`}>{count}</div>
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className={`flex items-center gap-2 mb-2 ${iconColor} opacity-70`}>{icon}<span className="text-sm font-medium">{label}</span></div>
+      <div className={`text-3xl font-bold ${numColor}`}>{count}</div>
       {amount !== undefined && (
-        <div className="text-sm mt-1 opacity-80">{formatCents(amount)}</div>
+        <div className="text-sm mt-1 text-gray-500">{formatCents(amount)}</div>
       )}
     </div>
   )
@@ -745,20 +737,20 @@ function SummaryCard({
 function EventBadge({ eventType }: { eventType: string }) {
   if (eventType === 'ach.settlement') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#2d2d2d] text-white">
         <CheckCircle2 className="w-3 h-3" /> Settled
       </span>
     )
   }
   if (eventType === 'ach.return') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#b22625]/10 text-[#b22625]">
         <XCircle className="w-3 h-3" /> Returned
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
       <AlertTriangle className="w-3 h-3" /> NOC
     </span>
   )
@@ -793,11 +785,11 @@ function formatCents(cents: number): string {
 
 function BocFileBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    Accepted:    'bg-blue-100 text-blue-800',
-    Rejected:    'bg-red-100 text-red-800',
-    Received:    'bg-gray-100 text-gray-700',
-    Transmitted: 'bg-indigo-100 text-indigo-700',
-    Settled:     'bg-green-100 text-green-800',
+    Received:    'bg-gray-100 text-gray-600',
+    Accepted:    'bg-gray-100 text-gray-700',
+    Transmitted: 'bg-gray-200 text-gray-700',
+    Settled:     'bg-[#2d2d2d] text-white',
+    Rejected:    'bg-[#b22625]/10 text-[#b22625]',
   }
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -808,13 +800,13 @@ function BocFileBadge({ status }: { status: string }) {
 
 function BocItemBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    Received:    'bg-gray-100 text-gray-600',
-    Accepted:    'bg-blue-100 text-blue-700',
-    Rejected:    'bg-red-100 text-red-700',
-    Transmitted: 'bg-indigo-100 text-indigo-700',
-    Settled:     'bg-green-100 text-green-700',
-    Returned:    'bg-red-100 text-red-700',
-    NOCApplied:  'bg-amber-100 text-amber-700',
+    Received:    'bg-gray-100 text-gray-500',
+    Accepted:    'bg-gray-100 text-gray-700',
+    Transmitted: 'bg-gray-200 text-gray-700',
+    Settled:     'bg-[#2d2d2d] text-white',
+    Returned:    'bg-[#b22625]/10 text-[#b22625]',
+    Rejected:    'bg-[#b22625]/10 text-[#b22625]',
+    NOCApplied:  'bg-gray-100 text-gray-700',
   }
   if (!status) return <span className="text-gray-400">—</span>
   return (
