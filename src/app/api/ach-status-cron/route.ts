@@ -1,16 +1,15 @@
 /**
- * POST /api/ach-status-poll
+ * GET|POST /api/ach-status-cron
  *
- * Polls BOC Bank for the last 7 days (default) and updates matching ach_batches
- * records. Accepts an optional { days } body param for one-off extended lookbacks.
+ * Daily ACH status poll — called by Vercel Cron (see vercel.json).
+ * Runs every day at 5 PM CST (23:00 UTC) to catch end-of-day settlements.
  *
- * Called manually from the admin ACH dashboard. Requires an authenticated
- * admin session.
+ * Security: requires Authorization: Bearer <CRON_SECRET> header.
+ * Vercel automatically sends this header when CRON_SECRET env var is set.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createSupabaseServer } from '@/lib/supabase-server'
 import { runAchStatusPoll } from '@/lib/ach-status-poll'
 
 export const dynamic = 'force-dynamic'
@@ -23,25 +22,22 @@ function getServiceSupabase() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabaseAuth = await createSupabaseServer()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) {
+  const authHeader = req.headers.get('authorization') ?? ''
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
-  let days = 7
-  try {
-    const body = await req.json()
-    if (typeof body.days === 'number' && body.days > 0) days = body.days
-  } catch { /* no body — use default */ }
 
   const supabase = getServiceSupabase()
 
   try {
-    const result = await runAchStatusPoll(supabase, { days })
+    const result = await runAchStatusPoll(supabase, { days: 7 })
     return NextResponse.json(result)
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }
+
+// Vercel Cron sends GET requests
+export const GET = POST

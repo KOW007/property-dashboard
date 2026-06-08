@@ -389,14 +389,21 @@ export default function AchTransactionsClient({
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100">
-                                {items.map((item, i) => (
-                                  <tr key={i} className="text-gray-700">
-                                    <td className="py-1.5 pr-8 font-medium">{String(item.individualName ?? '—')}</td>
-                                    <td className="py-1.5 pr-8 text-right">{typeof item.amount === 'number' ? formatCents(item.amount * 100) : '—'}</td>
-                                    <td className="py-1.5 pr-8"><BocItemBadge status={String(item.currentStatus ?? '')} /></td>
-                                    <td className="py-1.5 text-gray-500">{String(item.effectiveDate ?? '—')}</td>
-                                  </tr>
-                                ))}
+                                {items.map((item, i) => {
+                                  const events = item.events as Array<{ eventType: string; eventDate: string }> | undefined
+                                  const lastEvent = events && events.length > 0
+                                    ? [...events].sort((a, b) => a.eventDate < b.eventDate ? -1 : 1).at(-1)
+                                    : null
+                                  const effectiveStatus = lastEvent?.eventType ?? String(item.currentStatus ?? '')
+                                  return (
+                                    <tr key={i} className="text-gray-700">
+                                      <td className="py-1.5 pr-8 font-medium">{String(item.individualName ?? '—')}</td>
+                                      <td className="py-1.5 pr-8 text-right">{typeof item.amount === 'number' ? formatCents(item.amount * 100) : '—'}</td>
+                                      <td className="py-1.5 pr-8"><BocItemBadge status={effectiveStatus} /></td>
+                                      <td className="py-1.5 text-gray-500">{String(item.effectiveDate ?? '—')}</td>
+                                    </tr>
+                                  )
+                                })}
                               </tbody>
                             </table>
                           )}
@@ -786,9 +793,11 @@ function formatCents(cents: number): string {
 
 function BocFileBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    Accepted: 'bg-blue-100 text-blue-800',
-    Rejected: 'bg-red-100 text-red-800',
-    Received: 'bg-gray-100 text-gray-700',
+    Accepted:    'bg-blue-100 text-blue-800',
+    Rejected:    'bg-red-100 text-red-800',
+    Received:    'bg-gray-100 text-gray-700',
+    Transmitted: 'bg-indigo-100 text-indigo-700',
+    Settled:     'bg-green-100 text-green-800',
   }
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${styles[status] ?? 'bg-gray-100 text-gray-600'}`}>
