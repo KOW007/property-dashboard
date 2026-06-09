@@ -326,7 +326,7 @@ export default function AchTransactionsClient({
                       </td>
                       <td className="px-6 py-3 text-gray-400 text-xs">
                         {batch.last_polled_at
-                          ? new Date(batch.last_polled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                          ? new Date(batch.last_polled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
                           : '—'
                         }
                       </td>
@@ -618,7 +618,7 @@ export default function AchTransactionsClient({
                       onClick={() => setExpanded(isExpanded ? null : tx.id)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                        {new Date(tx.received_at).toLocaleDateString()}
+                        {new Date(tx.received_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago' })}
                       </td>
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {tx.individual_name}
