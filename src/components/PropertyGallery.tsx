@@ -42,6 +42,16 @@ export default function PropertyGallery({ photos, alt }: { photos: string[]; alt
           )
         })}
       </div>
+      {/* Mobile thumbnail strip */}
+      <div className="flex md:hidden gap-0.5 mt-0.5 overflow-x-auto">
+        {photos.map((url, i) => (
+          <button key={url} type="button" onClick={() => setHero(i)} className="relative shrink-0 w-20 h-20 cursor-pointer">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" className="w-full h-full object-cover" />
+            {hero === i && <div className="absolute inset-0 border-2 border-[#b22625] pointer-events-none" />}
+          </button>
+        ))}
+      </div>
       {expanded && (
         <div className="hidden md:grid grid-cols-8 gap-0.5 mt-0.5">
           {photos.slice(5).map((url, i) => {
