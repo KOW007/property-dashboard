@@ -19,10 +19,14 @@ export default async function ForRentPage() {
   const supabase = await createSupabaseServer()
   const serviceSupabase = getServiceSupabase()
 
-  const [{ data: vacancies }, { data: properties }] = await Promise.all([
+  const [{ data: allVacancies }, { data: properties }, { data: hiddenUnits }] = await Promise.all([
     supabase.from('current_vacancies').select('*').order('property_name').order('unit_number'),
     serviceSupabase.from('properties').select('id, name'),
+    serviceSupabase.from('units').select('id').eq('hide_from_public', true),
   ])
+
+  const hiddenIds = new Set((hiddenUnits ?? []).map(u => u.id))
+  const vacancies = (allVacancies ?? []).filter(u => !hiddenIds.has(u.unit_id))
 
   // Build name → id map
   const propertyIdByName: Record<string, string> = {}

@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Link from 'next/link'
+import HidePublicToggle from '@/components/HidePublicToggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +33,13 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
     .select('*')
     .order('property_name')
     .order('unit_number')
+
+  const unitIds = (allVacancies || []).map(u => u.unit_id).filter(Boolean)
+  const { data: unitFlags } = unitIds.length
+    ? await supabase.from('units').select('id, hide_from_public').in('id', unitIds)
+    : { data: [] }
+  const hiddenByUnit: Record<string, boolean> = {}
+  unitFlags?.forEach(u => { hiddenByUnit[u.id] = !!u.hide_from_public })
 
   const vacancies = statusFilter
     ? (allVacancies || []).filter(u => u.lease_status === statusFilter)
@@ -154,6 +162,10 @@ export default async function VacanciesPage({ searchParams }: { searchParams: Pr
                     </span>
                   </div>
                 </div>
+
+                {unit.unit_id && (
+                  <HidePublicToggle unitId={unit.unit_id} hidden={!!hiddenByUnit[unit.unit_id]} />
+                )}
               </div>
             ))}
           </div>

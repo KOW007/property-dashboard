@@ -18,6 +18,7 @@ export async function PATCH(
   if (body.bathrooms    !== undefined) update.bathrooms    = body.bathrooms    === '' ? null : Number(body.bathrooms)
   if (body.square_feet  !== undefined) update.square_feet  = body.square_feet  === '' ? null : Number(body.square_feet)
   if (body.market_rent  !== undefined) update.market_rent  = body.market_rent  === '' ? null : Number(body.market_rent)
+  if (body.hide_from_public !== undefined) update.hide_from_public = !!body.hide_from_public
 
   const { error } = await supabase.from('units').update(update).eq('id', id)
 
