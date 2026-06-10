@@ -34,7 +34,7 @@ export default async function ForRentPage() {
     grouped[unit.property_name]!.push(unit)
   })
 
-  // Fetch up to 5 photos per property
+  // Fetch up to 9 photos per property
   const propertyPhotos: Record<string, string[]> = {}
   await Promise.all(
     Object.keys(grouped).map(async (name) => {
@@ -42,7 +42,7 @@ export default async function ForRentPage() {
       if (!id) return
       const { data } = await serviceSupabase.storage
         .from(BUCKET)
-        .list(id, { limit: 5, sortBy: { column: 'created_at', order: 'asc' } })
+        .list(id, { limit: 9, sortBy: { column: 'created_at', order: 'asc' } })
       const urls = (data ?? [])
         .filter(f => f.name !== '.emptyFolderPlaceholder')
         .map(f => serviceSupabase.storage.from(BUCKET).getPublicUrl(`${id}/${f.name}`).data.publicUrl)
@@ -81,33 +81,33 @@ export default async function ForRentPage() {
           ) : (
             <div className="space-y-8">
               {Object.entries(grouped).map(([propertyName, units]) => (
-                <div key={propertyName} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div
+                  key={propertyName}
+                  id={propertyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden scroll-mt-6"
+                >
                   {/* Property photos */}
                   {propertyPhotos[propertyName]?.length > 0 && (() => {
                     const imgs = propertyPhotos[propertyName]
                     return (
-                      <div className={`grid gap-0.5 ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`} style={{ height: '260px' }}>
+                      <div className={`grid gap-0.5 ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2 grid-rows-2 md:grid-cols-4'}`} style={{ height: '340px' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imgs[0]} alt={propertyName} loading="eager" className={`w-full h-full object-cover ${imgs.length === 1 ? '' : 'row-span-2'}`} />
-                        {imgs.length >= 2 && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={imgs[1]} alt="" loading="eager" className="w-full h-full object-cover" />
-                        )}
-                        {imgs.length >= 3 && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={imgs[2]} alt="" loading="eager" className="w-full h-full object-cover" />
-                        )}
-                        {imgs.length >= 4 && (
-                          <div className="relative">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imgs[3]} alt="" loading="eager" className="w-full h-full object-cover" />
-                            {imgs.length > 4 && (
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                <span className="text-white font-semibold text-lg">+{imgs.length - 3} more</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <img src={imgs[0]} alt={propertyName} loading="eager" className={`w-full h-full object-cover ${imgs.length === 1 ? '' : 'col-span-2 row-span-2'}`} />
+                        {imgs.slice(1, 5).map((url, i) => {
+                          const isLast = i === 3
+                          const extra = imgs.length - 5
+                          return (
+                            <div key={url} className="relative hidden md:block">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={url} alt="" loading="eager" className="w-full h-full object-cover" />
+                              {isLast && extra > 0 && (
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                  <span className="text-white font-semibold text-lg">+{extra} more</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )
                   })()}

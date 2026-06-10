@@ -45,7 +45,7 @@ export default async function PropertiesPublicPage() {
         {(properties ?? []).map((prop) => (
           <Link
             key={prop.id}
-            href={`/for-rent`}
+            href={`/for-rent#${prop.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
             className="group relative block overflow-hidden rounded-sm aspect-[4/3] bg-gray-200"
           >
             {photos[prop.id] ? (
