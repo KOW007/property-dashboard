@@ -3,9 +3,9 @@ import Image from 'next/image'
 
 const navLinks = [
   { label: 'About', href: '/about' },
-  { label: 'Properties', href: '/for-rent' },
-  { label: 'Apply', href: '/apply' },
   { label: 'Contact', href: '/contact' },
+  { label: 'Properties', href: '/properties' },
+  { label: 'For Rent', href: '/for-rent' },
 ]
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
