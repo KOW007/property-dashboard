@@ -1,24 +1,56 @@
+import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
+const BUCKET = 'property-photos'
+
+function getServiceSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+}
+
 export default async function ForRentPage() {
   const supabase = await createSupabaseServer()
+  const serviceSupabase = getServiceSupabase()
 
-  const { data: vacancies } = await supabase
-    .from('current_vacancies')
-    .select('*')
-    .order('property_name')
-    .order('unit_number')
+  const [{ data: vacancies }, { data: properties }] = await Promise.all([
+    supabase.from('current_vacancies').select('*').order('property_name').order('unit_number'),
+    serviceSupabase.from('properties').select('id, name'),
+  ])
 
-  // Group by property
+  // Build name → id map
+  const propertyIdByName: Record<string, string> = {}
+  properties?.forEach(p => { propertyIdByName[p.name] = p.id })
+
+  // Group vacancies by property
   const grouped: Record<string, typeof vacancies> = {}
   vacancies?.forEach((unit) => {
-    const key = unit.property_name
-    if (!grouped[key]) grouped[key] = []
-    grouped[key]!.push(unit)
+    if (!grouped[unit.property_name]) grouped[unit.property_name] = []
+    grouped[unit.property_name]!.push(unit)
   })
+
+  // Fetch first photo for each property that has vacancies
+  const propertyPhotos: Record<string, string> = {}
+  await Promise.all(
+    Object.keys(grouped).map(async (name) => {
+      const id = propertyIdByName[name]
+      if (!id) return
+      const { data } = await serviceSupabase.storage
+        .from(BUCKET)
+        .list(id, { limit: 1, sortBy: { column: 'created_at', order: 'asc' } })
+      const first = data?.find(f => f.name !== '.emptyFolderPlaceholder')
+      if (first) {
+        propertyPhotos[name] = serviceSupabase.storage
+          .from(BUCKET)
+          .getPublicUrl(`${id}/${first.name}`).data.publicUrl
+      }
+    })
+  )
 
   const totalVacant = vacancies?.length || 0
 
@@ -52,6 +84,17 @@ export default async function ForRentPage() {
             <div className="space-y-8">
               {Object.entries(grouped).map(([propertyName, units]) => (
                 <div key={propertyName} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                  {/* Property photo */}
+                  {propertyPhotos[propertyName] && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={propertyPhotos[propertyName]}
+                      alt={propertyName}
+                      loading="eager"
+                      className="w-full h-56 object-cover"
+                    />
+                  )}
+
                   <div className="bg-[#2d2d2d] px-6 py-4">
                     <h2 className="text-xl font-bold text-white">{propertyName}</h2>
                     {units?.[0] && (
