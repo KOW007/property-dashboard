@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Maintenance', href: '/work-orders' },
   { label: 'Renewals', href: '/renewals' },
   { label: 'Applications', href: '/applications' },
+  { label: 'Properties', href: '/properties' },
   { label: 'Accounting', href: '/accounting/receivables' },
   { label: 'Tenant Portals', href: '/portal-preview' },
 ]
