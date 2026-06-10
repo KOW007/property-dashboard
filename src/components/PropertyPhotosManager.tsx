@@ -103,6 +103,7 @@ export default function PropertyPhotosManager({ properties }: { properties: Prop
                         <img
                           src={url}
                           alt=""
+                          loading="eager"
                           className="w-full h-full object-cover rounded-lg"
                         />
                         <button
