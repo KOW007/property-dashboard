@@ -34,21 +34,19 @@ export default async function ForRentPage() {
     grouped[unit.property_name]!.push(unit)
   })
 
-  // Fetch first photo for each property that has vacancies
-  const propertyPhotos: Record<string, string> = {}
+  // Fetch up to 5 photos per property
+  const propertyPhotos: Record<string, string[]> = {}
   await Promise.all(
     Object.keys(grouped).map(async (name) => {
       const id = propertyIdByName[name]
       if (!id) return
       const { data } = await serviceSupabase.storage
         .from(BUCKET)
-        .list(id, { limit: 1, sortBy: { column: 'created_at', order: 'asc' } })
-      const first = data?.find(f => f.name !== '.emptyFolderPlaceholder')
-      if (first) {
-        propertyPhotos[name] = serviceSupabase.storage
-          .from(BUCKET)
-          .getPublicUrl(`${id}/${first.name}`).data.publicUrl
-      }
+        .list(id, { limit: 5, sortBy: { column: 'created_at', order: 'asc' } })
+      const urls = (data ?? [])
+        .filter(f => f.name !== '.emptyFolderPlaceholder')
+        .map(f => serviceSupabase.storage.from(BUCKET).getPublicUrl(`${id}/${f.name}`).data.publicUrl)
+      if (urls.length) propertyPhotos[name] = urls
     })
   )
 
@@ -84,16 +82,35 @@ export default async function ForRentPage() {
             <div className="space-y-8">
               {Object.entries(grouped).map(([propertyName, units]) => (
                 <div key={propertyName} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                  {/* Property photo */}
-                  {propertyPhotos[propertyName] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={propertyPhotos[propertyName]}
-                      alt={propertyName}
-                      loading="eager"
-                      className="w-full h-56 object-cover"
-                    />
-                  )}
+                  {/* Property photos */}
+                  {propertyPhotos[propertyName]?.length > 0 && (() => {
+                    const imgs = propertyPhotos[propertyName]
+                    return (
+                      <div className={`grid gap-0.5 ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`} style={{ height: '260px' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgs[0]} alt={propertyName} loading="eager" className={`w-full h-full object-cover ${imgs.length === 1 ? '' : 'row-span-2'}`} />
+                        {imgs.length >= 2 && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imgs[1]} alt="" loading="eager" className="w-full h-full object-cover" />
+                        )}
+                        {imgs.length >= 3 && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imgs[2]} alt="" loading="eager" className="w-full h-full object-cover" />
+                        )}
+                        {imgs.length >= 4 && (
+                          <div className="relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imgs[3]} alt="" loading="eager" className="w-full h-full object-cover" />
+                            {imgs.length > 4 && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <span className="text-white font-semibold text-lg">+{imgs.length - 3} more</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   <div className="bg-[#2d2d2d] px-6 py-4">
                     <h2 className="text-xl font-bold text-white">{propertyName}</h2>
