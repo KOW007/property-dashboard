@@ -39,12 +39,12 @@ export default function PropertyPhotosManager({ properties }: { properties: Prop
     setUploading(true)
     const newUrls: string[] = []
     for (const file of Array.from(e.target.files)) {
-      const ext  = file.name.split('.').pop() ?? 'jpg'
-      const path = `${expanded}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { data, error } = await supabase.storage.from(BUCKET).upload(path, file)
-      if (!error && data) {
-        newUrls.push(supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl)
-      }
+      const form = new FormData()
+      form.append('file', file)
+      form.append('propertyId', expanded)
+      const res  = await fetch('/api/property-photos', { method: 'POST', body: form })
+      const data = await res.json()
+      if (res.ok && data.url) newUrls.push(data.url)
     }
     setPhotos(prev => ({ ...prev, [expanded]: [...(prev[expanded] ?? []), ...newUrls] }))
     setUploading(false)
@@ -54,7 +54,13 @@ export default function PropertyPhotosManager({ properties }: { properties: Prop
   const handleDelete = async (propertyId: string, url: string) => {
     setDeleting(url)
     const path = url.split(`/object/public/${BUCKET}/`)[1]
-    if (path) await supabase.storage.from(BUCKET).remove([decodeURIComponent(path)])
+    if (path) {
+      await fetch('/api/property-photos', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ path: decodeURIComponent(path) }),
+      })
+    }
     setPhotos(prev => ({ ...prev, [propertyId]: (prev[propertyId] ?? []).filter(u => u !== url) }))
     setDeleting(null)
   }
@@ -62,7 +68,7 @@ export default function PropertyPhotosManager({ properties }: { properties: Prop
   return (
     <div className="space-y-2">
       {properties.map(prop => {
-        const isOpen    = expanded === prop.id
+        const isOpen     = expanded === prop.id
         const propPhotos = photos[prop.id] ?? []
 
         return (
