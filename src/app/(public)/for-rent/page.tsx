@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Link from 'next/link'
+import PropertyGallery from '@/components/PropertyGallery'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,30 +88,9 @@ export default async function ForRentPage() {
                   className="bg-white rounded-xl shadow-sm overflow-hidden scroll-mt-6"
                 >
                   {/* Property photos */}
-                  {propertyPhotos[propertyName]?.length > 0 && (() => {
-                    const imgs = propertyPhotos[propertyName]
-                    return (
-                      <div className={`grid gap-0.5 ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2 grid-rows-2 md:grid-cols-4'}`} style={{ height: '340px' }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imgs[0]} alt={propertyName} loading="eager" className={`w-full h-full object-cover ${imgs.length === 1 ? '' : 'col-span-2 row-span-2'}`} />
-                        {imgs.slice(1, 5).map((url, i) => {
-                          const isLast = i === 3
-                          const extra = imgs.length - 5
-                          return (
-                            <div key={url} className="relative hidden md:block">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={url} alt="" loading="eager" className="w-full h-full object-cover" />
-                              {isLast && extra > 0 && (
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                  <span className="text-white font-semibold text-lg">+{extra} more</span>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )
-                  })()}
+                  {propertyPhotos[propertyName]?.length > 0 && (
+                    <PropertyGallery photos={propertyPhotos[propertyName]} alt={propertyName} />
+                  )}
 
                   <div className="bg-[#2d2d2d] px-6 py-4">
                     <h2 className="text-xl font-bold text-white">{propertyName}</h2>
